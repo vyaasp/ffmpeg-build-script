@@ -34,7 +34,7 @@ make_dir () {
 
 remove_dir () {
 	if [ -d $1 ]; then
-		rm -r "$1"
+		rm -rf "$1"
 	fi	
 }
 
@@ -307,11 +307,12 @@ fi
 
 if build "freetype2"; then
 	download "http://download.savannah.gnu.org/releases/freetype/freetype-2.6.3.tar.gz" "freetype-2.6.3.tar.gz"
-	cd $PACKAGES/freetype* || exit
-	execute ./configure --prefix=${WORKSPACE} --disable-shared --enable-static
+	cd $PACKAGES/freetype-2.6.3 || exit
+	execute ./configure --prefix=${WORKSPACE} --disable-shared --enable-static --without-png
+
 	execute make -j $MJOBS
 	execute make install
-	build_done "fdk_aac"
+	build_done "freetype2"
 fi
 
 
