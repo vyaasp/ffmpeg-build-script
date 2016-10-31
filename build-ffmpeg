@@ -2,7 +2,7 @@
 
 # https://github.com/markus-perl/ffmpeg-build-script
 
-VERSION=0.6
+VERSION=0.7
 CWD=$(pwd)
 PACKAGES="$CWD/packages" 
 WORKSPACE="$CWD/workspace"
@@ -34,7 +34,7 @@ make_dir () {
 
 remove_dir () {
 	if [ -d $1 ]; then
-		rm -rf "$1"
+		rm -r "$1"
 	fi	
 }
 
@@ -215,7 +215,7 @@ if build "xvidcore"; then
 fi
 
 if build "x264"; then
-	download "ftp://ftp.videolan.org/pub/x264/snapshots/last_x264.tar.bz2" "last_x264.tar.bz2"
+	download "ftp://ftp.videolan.org/pub/x264/snapshots/x264-snapshot-20161027-2245-stable.tar.bz2" "last_x264.tar.bz2"
 	cd $PACKAGES/x264-snapshot-* || exit
 	execute ./configure --prefix=${WORKSPACE} --disable-shared --enable-static
 	execute make -j $MJOBS
@@ -257,7 +257,7 @@ fi
 if build "pkg-config"; then
 	download "http://pkgconfig.freedesktop.org/releases/pkg-config-0.29.1.tar.gz" "pkg-config-0.29.1.tar.gz"
 	cd $PACKAGES/pkg-config-0.29.1 || exit
-	execute ./configure --silent --prefix=${WORKSPACE} --with-pc-path=${WORKSPACE}/lib/pkgconfig --with-internal-glib
+	execute ./configure --silent --prefix=${WORKSPACE} --with-pc-path=${WORKSPACE}/lib/pkgconfig 
 	execute make -j $MJOBS
 	execute make install
 	build_done "pkg-config"
@@ -275,18 +275,27 @@ if build "cmake"; then
 	build_done "cmake"
 fi
 
+if build "freetype2"; then
+	download "http://download.savannah.gnu.org/releases/freetype/freetype-2.6.5.tar.gz" "freetype.tar.gz"
+	cd $PACKAGES/freetype* || exit
+	execute ./configure --prefix=${WORKSPACE} --disable-shared --enable-static --without-png
+        execute make -j $MJOBS
+        execute make install
+        build_done "freetype2"
+fi
+
 if build "vid_stab"; then
 	download "https://codeload.github.com/georgmartius/vid.stab/legacy.tar.gz/release-0.98b" "vid.stab-0.98b-transcode-1.1-binary-x86_64.tgz"
 	cd $PACKAGES/georgmartius-vid* || exit
 	perl -p -i -e "s/vidstab SHARED/vidstab STATIC/" CMakeLists.txt 
 	execute cmake -DCMAKE_INSTALL_PREFIX:PATH=${WORKSPACE} . 
-	execute make -s install
+	execute make install
 	build_done "vid_stab"
 fi
 
 if build "x265"; then
-	download "https://bitbucket.org/multicoreware/x265/downloads/x265_1.9.tar.gz" "x265-1.9.tar.gz"
-	cd $PACKAGES/x265_1.9 || exit
+	download "https://bitbucket.org/multicoreware/x265/downloads/x265_2.1.tar.gz" "x265-2.1.tar.gz"
+	cd $PACKAGES/x265_* || exit
 	cd source || exit
 	execute cmake -DCMAKE_INSTALL_PREFIX:PATH=${WORKSPACE} -DENABLE_SHARED:bool=off . 
 	execute make -j $MJOBS
@@ -297,22 +306,13 @@ if build "x265"; then
 fi
 
 if build "fdk_aac"; then
-	download "http://downloads.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-0.1.4.tar.gz?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fopencore-amr%2Ffiles%2Ffdk-aac%2F&ts=1457561564&use_mirror=kent" "fdk-aac-0.1.4.tar.gz"
+	download "https://github.com/mstorsjo/fdk-aac/archive/master.tar.gz" "fdk-aac.zip"
 	cd $PACKAGES/fdk-aac* || exit
+	execute ./autogen.sh
 	execute ./configure --prefix=${WORKSPACE} --disable-shared --enable-static
 	execute make -j $MJOBS
 	execute make install
 	build_done "fdk_aac"
-fi
-
-if build "freetype2"; then
-	download "http://download.savannah.gnu.org/releases/freetype/freetype-2.6.3.tar.gz" "freetype-2.6.3.tar.gz"
-	cd $PACKAGES/freetype-2.6.3 || exit
-	execute ./configure --prefix=${WORKSPACE} --disable-shared --enable-static --without-png
-
-	execute make -j $MJOBS
-	execute make install
-	build_done "freetype2"
 fi
 
 
@@ -345,7 +345,7 @@ execute ./configure  --arch=64 --prefix=${WORKSPACE} --extra-cflags="-I$WORKSPAC
 	--enable-libopencore_amrwb \
 	--enable-libopencore_amrnb \
 	--enable-filters \
-	--enable-libvidstab \
+        --enable-libvidstab \
 	--enable-libfreetype
 	# enable all filters
 	# enable AAC de/encoding via libfdk-aac [no]
