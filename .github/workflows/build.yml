@@ -37,7 +37,7 @@ jobs:
 
   build-macos:
     name: build in native macOS
-    runs-on: macos-10.15
+    runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -50,6 +50,26 @@ jobs:
       - name: check shared library
         run: |
           otool -L ./workspace/bin/ffmpeg
+      - name: test run ffmepg
+        run: |
+          ./workspace/bin/ffmpeg -buildconf
+      - name: clean up
+        run: |
+          ./build-ffmpeg --cleanup
+
+  build-windowls:
+    name: build in native Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: build ffmpeg
+        shell: /bin/bash
+        run: |
+          while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
+          SKIPINSTALL=yes VERBOSE=yes ./build-ffmpeg --build
+          kill %1
       - name: test run ffmepg
         run: |
           ./workspace/bin/ffmpeg -buildconf
