@@ -5,7 +5,7 @@
 
 PROGNAME=$(basename "$0")
 FFMPEG_VERSION=4.4
-SCRIPT_VERSION=1.31
+SCRIPT_VERSION=1.31.rc1
 CWD=$(pwd)
 PACKAGES="$CWD/packages"
 WORKSPACE="$CWD/workspace"
@@ -1002,6 +1002,8 @@ fi
 cd $CWD
 if [[ "$OSTYPE" == "darwin"* ]]; then
   node copy_mac_libs.js
+  cd "$WORKSPACE/mac"
+  execute zip "ffmpeg-ffprobe-shared-darwin-x86_64.${VERSION}.zip" *
 fi
 
 exit 0
