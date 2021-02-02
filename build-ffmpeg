@@ -405,7 +405,7 @@ fi
 CONFIGURE_OPTIONS+=("--enable-openssl")
 
 if build "meson"; then
-	execute python3 -m pip install meson ninja
+	execute pip3 install install meson ninja
 	build_done "meson"
 fi
 
@@ -550,7 +550,7 @@ if build "dav1d"; then
 	download "https://code.videolan.org/videolan/dav1d/-/archive/0.7.1/dav1d-0.7.1.tar.gz"
 	make_dir "$PACKAGES"/dav1d_build
 	cd "$PACKAGES"/dav1d_build || exit
-	execute meson --prefix="${WORKSPACE}" --default-library=static ../dav1d-0.7.1
+	execute meson --prefix="${WORKSPACE}" --libdir="${WORKSPACE}/lib" --default-library=static ../dav1d-0.7.1
 	execute ninja
 	execute ninja install
 
@@ -826,17 +826,19 @@ if [[ -n "$SENTRY_AUTH_TOKEN" ]] && [[ -n "$SENTRY_ORG" ]] && [[ -n "$SENTRY_PRO
 fi
 
 # strip symbols from binaries (i.e., make them smaller)
-execute strip -x libavcodec/libavcodec.dylib
-execute strip -x libavdevice/libavdevice.dylib
-execute strip -x libavfilter/libavfilter.dylib
-execute strip -x libavformat/libavformat.dylib
-execute strip -x libavutil/libavutil.dylib
-execute strip -x libpostproc/libpostproc.dylib
-execute strip -x libswresample/libswresample.dylib
-execute strip -x libswscale/libswscale.dylib
-execute strip -x ffmpeg
-execute strip -x ffprobe
-execute strip -x ffplay
+if is_mac; then
+    execute strip -x libavcodec/libavcodec.dylib
+    execute strip -x libavdevice/libavdevice.dylib
+    execute strip -x libavfilter/libavfilter.dylib
+    execute strip -x libavformat/libavformat.dylib
+    execute strip -x libavutil/libavutil.dylib
+    execute strip -x libpostproc/libpostproc.dylib
+    execute strip -x libswresample/libswresample.dylib
+    execute strip -x libswscale/libswscale.dylib
+    execute strip -x ffmpeg
+    execute strip -x ffprobe
+    execute strip -x ffplay
+fi
 
 execute make -j $MJOBS
 execute make install
