@@ -801,9 +801,7 @@ download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/553eb0773763798a6b96
   --extra-libs="${EXTRALIBS}" \
   --pkgconfigdir="$WORKSPACE/lib/pkgconfig" \
   --pkg-config-flags="--static" \
-	--prefix="${WORKSPACE}" \
-	--disable-stripping \
-	--enable-debug
+	--prefix="${WORKSPACE}"
 
 if is_mac; then
 	execute dsymutil libavcodec/libavcodec.dylib -o libavcodec.dSYM
