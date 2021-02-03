@@ -23,11 +23,11 @@ if [[ ("$(uname -m)" == "arm64") && ("$OSTYPE" == "darwin"*) ]]; then
 fi
 
 is_mac () {
-	if [[ "$OSTYPE" == "darwin"* ]]; then
-		return 0
-	fi
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    return 0
+  fi
 
-	return 1
+  return 1
 }
 
 # read by gcc and cmake
@@ -166,10 +166,10 @@ library_exists() {
 }
 
 set_mac_install_name () {
-	local name="${2:-$1}"
-	if is_mac; then
-		execute install_name_tool -id "${WORKSPACE}/lib/$name" $1
-	fi
+  local name="${2:-$1}"
+  if is_mac; then
+    execute install_name_tool -id "${WORKSPACE}/lib/$name" $1
+  fi
 }
 
 build_done() {
@@ -405,8 +405,8 @@ fi
 CONFIGURE_OPTIONS+=("--enable-openssl")
 
 if build "meson"; then
-	execute pip3 install install meson ninja
-	build_done "meson"
+  execute pip3 install install meson ninja
+  build_done "meson"
 fi
 
 if build "cmake"; then
@@ -521,12 +521,12 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libvidstab")
 
 if build "twolame"; then
-	download "https://downloads.sourceforge.net/twolame/twolame-0.4.0.tar.gz"
-	execute ./configure --prefix="${WORKSPACE}" --enable-static --disable-shared
-	execute make -j $MJOBS
-	execute make install
+  download "https://downloads.sourceforge.net/twolame/twolame-0.4.0.tar.gz"
+  execute ./configure --prefix="${WORKSPACE}" --enable-static --disable-shared
+  execute make -j $MJOBS
+  execute make install
 
-	build_done "twolame"
+  build_done "twolame"
 fi
 CONFIGURE_OPTIONS+=("--enable-libtwolame")
 
@@ -547,25 +547,25 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libaom")
 
 if build "dav1d"; then
-	download "https://code.videolan.org/videolan/dav1d/-/archive/0.7.1/dav1d-0.7.1.tar.gz"
-	make_dir "$PACKAGES"/dav1d_build
-	cd "$PACKAGES"/dav1d_build || exit
-	execute meson --prefix="${WORKSPACE}" --libdir="${WORKSPACE}/lib" --default-library=static ../dav1d-0.7.1
-	execute ninja
-	execute ninja install
+  download "https://code.videolan.org/videolan/dav1d/-/archive/0.7.1/dav1d-0.7.1.tar.gz"
+  make_dir "$PACKAGES"/dav1d_build
+  cd "$PACKAGES"/dav1d_build || exit
+  execute meson --prefix="${WORKSPACE}" --libdir="${WORKSPACE}/lib" --default-library=static ../dav1d-0.7.1
+  execute ninja
+  execute ninja install
 
-	build_done "dav1d"
+  build_done "dav1d"
 fi
 CONFIGURE_OPTIONS+=("--enable-libdav1d")
 
 if build "zimg"; then
-	download "https://github.com/sekrit-twc/zimg/archive/release-3.0.1.tar.gz"
-	execute autoreconf -i
-	execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
-	execute make -j $MJOBS
-	execute make install
+  download "https://github.com/sekrit-twc/zimg/archive/release-3.0.1.tar.gz"
+  execute autoreconf -i
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  execute make -j $MJOBS
+  execute make install
 
-	build_done "zimg"
+  build_done "zimg"
 fi
 CONFIGURE_OPTIONS+=("--enable-libzimg")
 
@@ -645,35 +645,35 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libfdk-aac")
 
 if build "shine"; then
-	download "https://github.com/toots/shine/archive/3.1.1.tar.gz" "shine-3.1.1.tar.gz"
-	execute autoreconf -i
-	execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
-	execute make -j $MJOBS
-	execute make install
+  download "https://github.com/toots/shine/archive/3.1.1.tar.gz" "shine-3.1.1.tar.gz"
+  execute autoreconf -i
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  execute make -j $MJOBS
+  execute make install
 
-	build_done "shine"
+  build_done "shine"
 fi
 CONFIGURE_OPTIONS+=("--enable-libshine")
 
 if build "soxr"; then
-	download "http://ftp.debian.org/debian/pool/main/libs/libsoxr/libsoxr_0.1.3.orig.tar.xz" "soxr-0.1.3.tar.xz"
-	make_dir build
-	cd build || exit
-	execute cmake .. -DWITH_OPENMP:BOOL=OFF -Wno-dev -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS:BOOL=OFF
-	execute make -j $MJOBS
-	execute make install
+  download "http://ftp.debian.org/debian/pool/main/libs/libsoxr/libsoxr_0.1.3.orig.tar.xz" "soxr-0.1.3.tar.xz"
+  make_dir build
+  cd build || exit
+  execute cmake .. -DWITH_OPENMP:BOOL=OFF -Wno-dev -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS:BOOL=OFF
+  execute make -j $MJOBS
+  execute make install
 
-	build_done "soxr"
+  build_done "soxr"
 fi
 CONFIGURE_OPTIONS+=("--enable-libsoxr")
 
 if build "speex"; then
-	download "http://downloads.us.xiph.org/releases/speex/speex-1.2.0.tar.gz"
-	execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
-	execute make -j $MJOBS
-	execute make install
+  download "http://downloads.us.xiph.org/releases/speex/speex-1.2.0.tar.gz"
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  execute make -j $MJOBS
+  execute make install
 
-	build_done "speex"
+  build_done "speex"
 fi
 CONFIGURE_OPTIONS+=("--enable-libspeex")
 
@@ -694,14 +694,14 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libwebp")
 
 if build "openjpeg"; then
-	download "https://github.com/uclouvain/openjpeg/archive/v2.3.1.tar.gz" "openjpeg-v2.3.1.tar.gz"
-	make_dir build
-	cd build || exit
-	execute cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DBUILD_SHARED_LIBS:bool=OFF
-	execute make -j $MJOBS
-	execute make install
+  download "https://github.com/uclouvain/openjpeg/archive/v2.3.1.tar.gz" "openjpeg-v2.3.1.tar.gz"
+  make_dir build
+  cd build || exit
+  execute cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DBUILD_SHARED_LIBS:bool=OFF
+  execute make -j $MJOBS
+  execute make install
 
-	build_done "openjpeg"
+  build_done "openjpeg"
 fi
 CONFIGURE_OPTIONS+=("--enable-libopenjpeg")
 
@@ -719,28 +719,28 @@ if build "libsdl"; then
 fi
 
 if build "snappy"; then
-	download "https://github.com/google/snappy/archive/1.1.8.tar.gz"
-	make_dir build
-	cd build || exit
-	execute cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DBUILD_SHARED_LIBS:bool=OFF
-	execute make -j $MJOBS
+  download "https://github.com/google/snappy/archive/1.1.8.tar.gz"
+  make_dir build
+  cd build || exit
+  execute cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DBUILD_SHARED_LIBS:bool=OFF
+  execute make -j $MJOBS
 
-	set_mac_install_name "libsnappy.1.1.8.dylib" "libsnappy.1.dylib"
+  set_mac_install_name "libsnappy.1.1.8.dylib" "libsnappy.1.dylib"
 
-	execute make install
+  execute make install
 
-	build_done "srt"
-	build_done "snappy"
+  build_done "srt"
+  build_done "snappy"
 fi
 CONFIGURE_OPTIONS+=("--enable-libsnappy")
 
 if build "xz"; then
-	download "https://tukaani.org/xz/xz-5.2.5.tar.gz"
-	execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
-	execute make -j $MJOBS
-	execute make install
+  download "https://tukaani.org/xz/xz-5.2.5.tar.gz"
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  execute make -j $MJOBS
+  execute make install
 
-	build_done "xz"
+  build_done "xz"
 fi
 
 ##
@@ -801,26 +801,26 @@ download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/553eb0773763798a6b96
   --extra-libs="${EXTRALIBS}" \
   --pkgconfigdir="$WORKSPACE/lib/pkgconfig" \
   --pkg-config-flags="--static" \
-	--prefix="${WORKSPACE}"
+  --prefix="${WORKSPACE}"
 
 if is_mac; then
-	execute dsymutil libavcodec/libavcodec.dylib -o libavcodec.dSYM
-	execute dsymutil libavdevice/libavdevice.dylib -o libavdevice.dSYM
-	execute dsymutil libavfilter/libavfilter.dylib -o libavfilter.dSYM
-	execute dsymutil libavformat/libavformat.dylib -o libavformat.dSYM
-	# we're not building this one (libswresample replaces this)
-	# execute dsymutil libavresample/libavresample.dylib -o libavresample.dSYM
-	execute dsymutil libavutil/libavutil.dylib -o libavutil.dSYM
-	execute dsymutil libpostproc/libpostproc.dylib -o libpostproc.dSYM
-	execute dsymutil libswresample/libswresample.dylib -o libswresample.dSYM
-	execute dsymutil libswscale/libswscale.dylib -o libswscale.dSYM
+  execute dsymutil libavcodec/libavcodec.dylib -o libavcodec.dSYM
+  execute dsymutil libavdevice/libavdevice.dylib -o libavdevice.dSYM
+  execute dsymutil libavfilter/libavfilter.dylib -o libavfilter.dSYM
+  execute dsymutil libavformat/libavformat.dylib -o libavformat.dSYM
+  # we're not building this one (libswresample replaces this)
+  # execute dsymutil libavresample/libavresample.dylib -o libavresample.dSYM
+  execute dsymutil libavutil/libavutil.dylib -o libavutil.dSYM
+  execute dsymutil libpostproc/libpostproc.dylib -o libpostproc.dSYM
+  execute dsymutil libswresample/libswresample.dylib -o libswresample.dSYM
+  execute dsymutil libswscale/libswscale.dylib -o libswscale.dSYM
 fi
 
 if [[ -n "$SENTRY_AUTH_TOKEN" ]] && [[ -n "$SENTRY_ORG" ]] && [[ -n "$SENTRY_PROJECT" ]]; then
-	# TODO: install sentry-cli when running on CI
-	# reads SENTRY_AUTH_TOKEN, SENTRY_ORG and SENTRY_PROJECT from env
-	# https://docs.sentry.io/product/cli/configuration/#configuration-values
-	sentry-cli upload-dif .
+  # TODO: install sentry-cli when running on CI
+  # reads SENTRY_AUTH_TOKEN, SENTRY_ORG and SENTRY_PROJECT from env
+  # https://docs.sentry.io/product/cli/configuration/#configuration-values
+  sentry-cli upload-dif .
 fi
 
 # strip symbols from binaries (i.e., make them smaller)
@@ -888,9 +888,9 @@ fi
 
 cd $CWD
 if is_mac; then
-	node copy_mac_libs.js
-	cd "$WORKSPACE/mac"
-	execute zip --symlinks -r "ffmpeg-ffprobe-shared-darwin-x86_64.${VERSION}.zip" *
+  node copy_mac_libs.js
+  cd "$WORKSPACE/mac"
+  execute zip --symlinks -r "ffmpeg-ffprobe-shared-darwin-x86_64.${VERSION}.zip" *
 fi
 
 exit 0
