@@ -412,17 +412,17 @@ if build "cmake"; then
   build_done "cmake"
 fi
 
-if build "svtav1"; then
-  download "https://github.com/AOMediaCodec/SVT-AV1/archive/v0.8.6.tar.gz"
-  cd Build/linux || exit
-  execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON ../.. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-  execute make -j $MJOBS
-  execute make install
-  execute cp SvtAv1Enc.pc "${WORKSPACE}/lib/pkgconfig/"
-  execute cp SvtAv1Dec.pc "${WORKSPACE}/lib/pkgconfig/"
-  build_done "svtav1"
-fi
-CONFIGURE_OPTIONS+=("--enable-libsvtav1")
+#if build "svtav1"; then
+#  download "https://github.com/AOMediaCodec/SVT-AV1/archive/v0.8.6.tar.gz"
+#  cd Build/linux || exit
+#  execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON ../.. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+#  execute make -j $MJOBS
+#  execute make install
+#  execute cp SvtAv1Enc.pc "${WORKSPACE}/lib/pkgconfig/"
+#  execute cp SvtAv1Dec.pc "${WORKSPACE}/lib/pkgconfig/"
+#  build_done "svtav1"
+#fi
+#CONFIGURE_OPTIONS+=("--enable-libsvtav1")
 
 ##
 ## video library
@@ -452,7 +452,7 @@ if build "x265"; then
 	execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=on -DBUILD_SHARED_LIBS=on ../../source
   execute make -j $MJOBS
 
-	set_mac_install_name "libx265.198.dylib"
+	set_mac_install_name "libx265.199.dylib"
 
   execute make install
 
@@ -568,16 +568,16 @@ CONFIGURE_OPTIONS+=("--enable-libaom")
 #fi
 #CONFIGURE_OPTIONS+=("--enable-libdav1d")
 
-if build "zimg"; then
-	download "https://github.com/sekrit-twc/zimg/archive/release-3.0.1.tar.gz"
-	execute autoreconf -i
-	execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
-	execute make -j $MJOBS
-	execute make install
-
-	build_done "zimg"
-fi
-CONFIGURE_OPTIONS+=("--enable-libzimg")
+#if build "zimg"; then
+#	download "https://github.com/sekrit-twc/zimg/archive/release-3.0.1.tar.gz"
+#	execute autoreconf -i
+#	execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+#	execute make -j $MJOBS
+#	execute make install
+#
+#	build_done "zimg"
+#fi
+#CONFIGURE_OPTIONS+=("--enable-libzimg")
 
 ##
 ## audio library
@@ -625,7 +625,7 @@ fi
 
 if build "libvorbis"; then
   download "https://ftp.osuosl.org/pub/xiph/releases/vorbis/libvorbis-1.3.6.tar.gz"
-	OGG_CFLAGS="-I${WORKSPACE}/include/ogg" OGG_LIBS="-L${WORKSPACE}/lib -logg" execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --disable-static --enable-shared --disable-oggtest
+	OGG_CFLAGS="-I${WORKSPACE}/include" OGG_LIBS="-L${WORKSPACE}/lib -logg" execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --disable-static --enable-shared --disable-oggtest
   execute make -j $MJOBS
   execute make install
 
@@ -633,41 +633,41 @@ if build "libvorbis"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libvorbis")
 
-if build "libtheora"; then
-  download "https://ftp.osuosl.org/pub/xiph/releases/theora/libtheora-1.1.1.tar.gz"
-  sed "s/-fforce-addr//g" configure >configure.patched
-  chmod +x configure.patched
-  mv configure.patched configure
-	OGG_CFLAGS="-I${WORKSPACE}/include/ogg" OGG_LIBS="-L${WORKSPACE}/lib -logg" execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --disable-static --enable-shared --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
-  execute make -j $MJOBS
-  execute make install
+#if build "libtheora"; then
+#  download "https://ftp.osuosl.org/pub/xiph/releases/theora/libtheora-1.1.1.tar.gz"
+#  sed "s/-fforce-addr//g" configure >configure.patched
+#  chmod +x configure.patched
+#  mv configure.patched configure
+#	OGG_CFLAGS="-I${WORKSPACE}/include" OGG_LIBS="-L${WORKSPACE}/lib -logg" execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --disable-static --enable-shared --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
+#  execute make -j $MJOBS
+#  execute make install
+#
+#  build_done "libtheora"
+#fi
+#CONFIGURE_OPTIONS+=("--enable-libtheora")
 
-  build_done "libtheora"
-fi
-CONFIGURE_OPTIONS+=("--enable-libtheora")
+#if build "shine"; then
+#	download "https://github.com/toots/shine/archive/3.1.1.tar.gz" "shine-3.1.1.tar.gz"
+#	execute autoreconf -i
+#	execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+#	execute make -j $MJOBS
+#	execute make install
+#
+#	build_done "shine"
+#fi
+#CONFIGURE_OPTIONS+=("--enable-libshine")
 
-if build "shine"; then
-	download "https://github.com/toots/shine/archive/3.1.1.tar.gz" "shine-3.1.1.tar.gz"
-	execute autoreconf -i
-	execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
-	execute make -j $MJOBS
-	execute make install
-
-	build_done "shine"
-fi
-CONFIGURE_OPTIONS+=("--enable-libshine")
-
-if build "soxr"; then
-	download "http://ftp.debian.org/debian/pool/main/libs/libsoxr/libsoxr_0.1.3.orig.tar.xz" "soxr-0.1.3.tar.xz"
-	make_dir build
-	cd build || exit
-	execute cmake .. -DWITH_OPENMP:BOOL=OFF -Wno-dev -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS:BOOL=ON
-	execute make -j $MJOBS
-	execute make install
-
-	build_done "soxr"
-fi
-CONFIGURE_OPTIONS+=("--enable-libsoxr")
+#if build "soxr"; then
+#	download "http://ftp.debian.org/debian/pool/main/libs/libsoxr/libsoxr_0.1.3.orig.tar.xz" "soxr-0.1.3.tar.xz"
+#	make_dir build
+#	cd build || exit
+#	execute cmake .. -DWITH_OPENMP:BOOL=OFF -Wno-dev -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS:BOOL=ON
+#	execute make -j $MJOBS
+#	execute make install
+#
+#	build_done "soxr"
+#fi
+#CONFIGURE_OPTIONS+=("--enable-libsoxr")
 
 if build "speex"; then
 	download "http://downloads.us.xiph.org/releases/speex/speex-1.2.0.tar.gz"
