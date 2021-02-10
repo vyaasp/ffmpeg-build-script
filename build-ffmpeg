@@ -14,6 +14,11 @@ LDEXEFLAGS=""
 EXTRALIBS="-ldl -lpthread -lm -lz"
 MACOS_M1=false
 CONFIGURE_OPTIONS=()
+
+# read by gcc and cmake
+# https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_DEPLOYMENT_TARGET.html
+export MACOSX_DEPLOYMENT_TARGET=10.11
+
 # Check for Apple Silicon
 if [[ ("$(uname -m)" == "arm64") && ("$OSTYPE" == "darwin"*) ]]; then
   # If arm64 AND darwin (macOS)
@@ -29,10 +34,6 @@ is_mac () {
 
 	return 1
 }
-
-# read by gcc and cmake
-# https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_DEPLOYMENT_TARGET.html
-export MACOSX_DEPLOYMENT_TARGET=10.11
 
 # Speed up the process
 # Env Var NUMJOBS overrides automatic detection
@@ -414,7 +415,7 @@ fi
 if build "svtav1"; then
   download "https://github.com/AOMediaCodec/SVT-AV1/archive/v0.8.6.tar.gz"
   cd Build/linux || exit
-  execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=OFF ../.. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+  execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON ../.. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
   execute make -j $MJOBS
   execute make install
   execute cp SvtAv1Enc.pc "${WORKSPACE}/lib/pkgconfig/"
