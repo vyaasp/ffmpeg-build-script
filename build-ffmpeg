@@ -5,7 +5,7 @@
 
 PROGNAME=$(basename "$0")
 FFMPEG_VERSION=4.4
-SCRIPT_VERSION=1.31.rc5
+SCRIPT_VERSION=1.31.rc6
 CWD=$(pwd)
 PACKAGES="$CWD/packages"
 WORKSPACE="$CWD/workspace"
@@ -935,7 +935,6 @@ build "ffmpeg" "$FFMPEG_VERSION"
 download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/$FFMPEG_VERSION.tar.gz" "FFmpeg-release-$FFMPEG_VERSION.tar.gz"
 # shellcheck disable=SC2086
 ./configure "${CONFIGURE_OPTIONS[@]}" \
-	--disable-debug \
 	--disable-doc \
 	--disable-static \
 	--enable-pthreads \
@@ -949,8 +948,44 @@ download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/$FFMPEG_VE
 	--pkg-config-flags="--static" \
 	--prefix="${WORKSPACE}" \
 	--extra-version="${EXTRA_VERSION}"
+	--disable-stripping \
+	--enable-debug
 
 execute make -j $MJOBS
+
+if is_mac; then
+	execute dsymutil libavcodec/libavcodec.dylib -o libavcodec.dSYM
+	execute dsymutil libavdevice/libavdevice.dylib -o libavdevice.dSYM
+	execute dsymutil libavfilter/libavfilter.dylib -o libavfilter.dSYM
+	execute dsymutil libavformat/libavformat.dylib -o libavformat.dSYM
+	# we're not building this one (libswresample replaces this)
+	# execute dsymutil libavresample/libavresample.dylib -o libavresample.dSYM
+	execute dsymutil libavutil/libavutil.dylib -o libavutil.dSYM
+	execute dsymutil libpostproc/libpostproc.dylib -o libpostproc.dSYM
+	execute dsymutil libswresample/libswresample.dylib -o libswresample.dSYM
+	execute dsymutil libswscale/libswscale.dylib -o libswscale.dSYM
+fi
+
+if [[ -n "$SENTRY_AUTH_TOKEN" ]] && [[ -n "$SENTRY_ORG" ]] && [[ -n "$SENTRY_PROJECT" ]]; then
+	# TODO: install sentry-cli when running on CI
+	# reads SENTRY_AUTH_TOKEN, SENTRY_ORG and SENTRY_PROJECT from env
+	# https://docs.sentry.io/product/cli/configuration/#configuration-values
+	sentry-cli upload-dif .
+fi
+
+# strip symbols from binaries (i.e., make them smaller)
+execute strip -x libavcodec/libavcodec.dylib
+execute strip -x libavdevice/libavdevice.dylib
+execute strip -x libavfilter/libavfilter.dylib
+execute strip -x libavformat/libavformat.dylib
+execute strip -x libavutil/libavutil.dylib
+execute strip -x libpostproc/libpostproc.dylib
+execute strip -x libswresample/libswresample.dylib
+execute strip -x libswscale/libswscale.dylib
+execute strip -x ffmpeg
+execute strip -x ffprobe
+execute strip -x ffplay
+
 execute make install
 
 INSTALL_FOLDER="/usr/bin"
