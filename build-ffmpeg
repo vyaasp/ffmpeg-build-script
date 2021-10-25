@@ -5,7 +5,7 @@
 
 PROGNAME=$(basename "$0")
 FFMPEG_VERSION=4.4
-SCRIPT_VERSION=1.31.rc4
+SCRIPT_VERSION=1.31.rc5
 CWD=$(pwd)
 PACKAGES="$CWD/packages"
 WORKSPACE="$CWD/workspace"
@@ -26,6 +26,14 @@ if [[ ("$(uname -m)" == "arm64") && ("$OSTYPE" == "darwin"*) ]]; then
 	MACOS_M1=true
 fi
 
+is_mac () {
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		return 0
+	fi
+
+	return 1
+}
+
 # read by gcc and cmake
 # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_DEPLOYMENT_TARGET.html
 export MACOSX_DEPLOYMENT_TARGET=10.11
@@ -36,7 +44,7 @@ if [[ -n "$NUMJOBS" ]]; then
 	MJOBS="$NUMJOBS"
 elif [[ -f /proc/cpuinfo ]]; then
 	MJOBS=$(grep -c processor /proc/cpuinfo)
-elif [[ "$OSTYPE" == "darwin"* ]]; then
+elif is_mac; then
 	MJOBS=$(sysctl -n machdep.cpu.thread_count)
 	CONFIGURE_OPTIONS=("--enable-videotoolbox")
 	MACOS_LIBTOOL="$(which libtool)" # gnu libtool is installed in this script and need to avoid name conflict
@@ -174,6 +182,13 @@ build_done() {
 	echo "$2" > "$PACKAGES/$1.done"
 }
 
+set_mac_install_name () {
+	local name="${2:-$1}"
+	if is_mac; then
+		execute install_name_tool -id "${WORKSPACE}/lib/$name" $1
+	fi
+}
+
 verify_binary_type() {
 	if ! command_exists "file"; then
 		return
@@ -240,7 +255,7 @@ while (($# > 0)); do
 			cleanup
 		fi
 		if [[ "$1" == "--full-static" ]]; then
-			if [[ "$OSTYPE" == "darwin"* ]]; then
+			if is_mac; then
 				echo "Error: A full static binary can only be build on Linux."
 				exit 1
 			fi
@@ -512,7 +527,7 @@ if build "libvpx" "1.10.0"; then
 
 	EXTRA_FLAG=""
 
-	if [[ "$OSTYPE" == "darwin"* ]]; then
+	if is_mac; then
 		echo "Applying Darwin patch"
 		sed "s/,--version-script//g" build/make/Makefile > build/make/Makefile.patched
 		sed "s/-Wl,--no-undefined -Wl,-soname/-Wl,-undefined,error -Wl,-install_name/g" build/make/Makefile.patched > build/make/Makefile
@@ -523,9 +538,7 @@ if build "libvpx" "1.10.0"; then
 	execute ./configure --prefix="${WORKSPACE}" --disable-unit-tests --enable-shared --disable-static --as=yasm --enable-vp9-highbitdepth "${EXTRA_FLAG}"
 	execute make -j $MJOBS
 
-	if [[ "$OSTYPE" == "darwin"* ]]; then
-		execute install_name_tool -id "${WORKSPACE}/lib/libvpx.6.dylib" libvpx.6.dylib
-	fi
+	set_mac_install_name "libvpx.6.dylib"
 
 	execute make install
 
@@ -567,9 +580,7 @@ CONFIGURE_OPTIONS+=("--enable-libvpx")
 		execute make
 		execute make install
 
-		if [[ "$OSTYPE" == "darwin"* ]]; then
-			execute install_name_tool -id "${WORKSPACE}/lib/libvidstab.1.1.dylib" "${WORKSPACE}/lib/libvidstab.1.1.dylib"
-		fi
+		set_mac_install_name "${WORKSPACE}/lib/libvidstab.1.1.dylib" "libvidstab.1.1.dylib"
 
 		build_done "vid_stab" "1.1.0"
 	fi
@@ -597,9 +608,9 @@ if build "av1" "ae2be80"; then
 		execute cmake -DEBUILD_SHARED_LIBS=1 -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib "$PACKAGES"/av1
 	fi
 	execute make -j $MJOBS
-	if [[ "$OSTYPE" == "darwin"* ]]; then
-		execute install_name_tool -id "${WORKSPACE}/lib/libaom.2.dylib" libaom.2.0.0.dylib
-	fi
+
+	set_mac_install_name "libaom.2.0.0.dylib" "libaom.2.dylib"
+
 	execute make install
 
 	build_done "av1" "ae2be80"
@@ -849,9 +860,7 @@ if build "snappy"; then
 	execute cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DBUILD_SHARED_LIBS:bool=on
 	execute make -j $MJOBS
 
-	if [[ "$OSTYPE" == "darwin"* ]]; then
-		execute install_name_tool -id "${WORKSPACE}/lib/libsnappy.1.dylib" libsnappy.1.1.8.dylib
-	fi
+	set_mac_install_name "libsnappy.1.1.8.dylib" "libsnappy.1.dylib"
 
 	execute make install
 
@@ -945,7 +954,7 @@ execute make -j $MJOBS
 execute make install
 
 INSTALL_FOLDER="/usr/bin"
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if is_mac; then
 	INSTALL_FOLDER="/usr/local/bin"
 fi
 
@@ -989,10 +998,10 @@ elif [[ ! "$SKIPINSTALL" == "yes" ]]; then
 fi
 
 cd $CWD
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if is_mac; then
 	node copy_mac_libs.js
 	cd "$WORKSPACE/mac"
-	execute zip --symlinks -r "ffmpeg-ffprobe-shared-darwin-x86_64.${VERSION}.zip" *
+	execute zip --symlinks -r "ffmpeg-ffprobe-shared-darwin-x86_64.${SCRIPT_VERSION}.zip" *
 fi
 
 exit 0
