@@ -559,14 +559,13 @@ CONFIGURE_OPTIONS+=("--enable-libvpx")
       patch -p1 <fix_cmake_quoting.patch
     fi
 
-    execute cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DUSE_OMP=OFF -DENABLE_SHARED=on .
+    execute cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX:PATH="${WORKSPACE}" -DUSE_OMP=OFF -DENABLE_SHARED=on .
     execute make
+    execute make install
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
-	    execute install_name_tool -id "${WORKSPACE}/lib/libvidstab.1.1.dylib" libvidstab.1.1.dylib
+	    execute install_name_tool -id "${WORKSPACE}/lib/libvidstab.1.1.dylib" "${WORKSPACE}/lib/libvidstab.1.1.dylib"
 	  fi
-
-    execute make install
 
     build_done "vid_stab" "1.1.0"
   fi
