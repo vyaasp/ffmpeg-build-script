@@ -5,7 +5,7 @@
 
 PROGNAME=$(basename "$0")
 FFMPEG_VERSION=4.4
-SCRIPT_VERSION=1.31.rc3
+SCRIPT_VERSION=1.31.rc4
 CWD=$(pwd)
 PACKAGES="$CWD/packages"
 WORKSPACE="$CWD/workspace"
@@ -598,7 +598,7 @@ if build "av1" "ae2be80"; then
   fi
   execute make -j $MJOBS
   if [[ "$OSTYPE" == "darwin"* ]]; then
-	  execute install_name_tool -id "${WORKSPACE}/lib/libaom.2.dylib" libaom.2.dylib
+	  execute install_name_tool -id "${WORKSPACE}/lib/libaom.2.dylib" libaom.2.0.0.dylib
 	fi
   execute make install
 
@@ -850,7 +850,7 @@ if build "snappy"; then
   execute make -j $MJOBS
 
   if [[ "$OSTYPE" == "darwin"* ]]; then
-	  execute install_name_tool -id "${WORKSPACE}/lib/libsnappy.1.dylib" libsnappy.1.dylib
+	  execute install_name_tool -id "${WORKSPACE}/lib/libsnappy.1.dylib" libsnappy.1.1.8.dylib
 	fi
 
   execute make install
