@@ -375,6 +375,9 @@ if build "autoconf" "2.71"; then
 	build_done "autoconf" "2.71"
 fi
 
+# TODO: this didn't successfully install meson in a place on my path so any meson commands failed for me.
+# See https://github.com/mesonbuild/meson/issues/1613 for more context. 
+
 if build "meson"; then
 	execute python3 -m pip install meson ninja
 	build_done "meson"
@@ -476,6 +479,8 @@ fi
 	fi
 	CONFIGURE_OPTIONS+=("--enable-libx264")
 # fi
+
+# TODO: we should probably check with steve about what to do here re: liscensing - matt
 
 # if $NONFREE_AND_GPL; then
 # 	if build "x265" "3.5"; then
@@ -596,6 +601,8 @@ if build "twolame"; then
 	build_done "twolame"
 fi
 CONFIGURE_OPTIONS+=("--enable-libtwolame")
+
+# TODO: not sure if we need this but it was also failing for me at the set_mac_install_name line below - matt
 
 # if build "av1" "ae2be80"; then
 # 	# libaom ae2be80 == v3.1.2
@@ -794,6 +801,8 @@ CONFIGURE_OPTIONS+=("--enable-libspeex")
 ##
 ## image library
 ##
+
+# TODO: re-enable? this failed to build even in a clean checkout of the ffmpeg-build-script repo. - matt
 
 # if build "libtiff" "4.3.0"; then
 # 	download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
