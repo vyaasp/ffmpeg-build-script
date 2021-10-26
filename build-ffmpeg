@@ -54,7 +54,7 @@ fi
 
 CONFIGURE_OPTIONS+=("--extra-version=beamcube")
 
-make_dir () {
+make_dir() {
 	remove_dir "$1"
 	if ! mkdir "$1"; then
 		printf "\n Failed to create dir %s" "$1"
@@ -478,48 +478,48 @@ fi
 # fi
 
 # if $NONFREE_AND_GPL; then
-	if build "x265" "3.5"; then
-		download "https://github.com/videolan/x265/archive/Release_3.5.tar.gz" "x265-3.5.tar.gz" # This is actually 3.4 if looking at x265Version.txt
-		cd build/linux || exit
-		rm -rf 8bit 10bit 12bit 2>/dev/null
-		mkdir -p 8bit 10bit 12bit
-		cd 12bit || exit
-		execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF -DMAIN12=ON
-		execute make -j $MJOBS
-		cd ../10bit || exit
-		execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF
-		execute make -j $MJOBS
-		cd ../8bit || exit
-		ln -sf ../10bit/libx265.a libx265_main10.a
-		ln -sf ../12bit/libx265.a libx265_main12.a
-		execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DEXTRA_LIB="x265_main10.a;x265_main12.a;-ldl" -DEXTRA_LINK_FLAGS=-L. -DLINKED_10BIT=ON -DLINKED_12BIT=ON
-		execute make -j $MJOBS
+# 	if build "x265" "3.5"; then
+# 		download "https://github.com/videolan/x265/archive/Release_3.5.tar.gz" "x265-3.5.tar.gz" # This is actually 3.4 if looking at x265Version.txt
+# 		cd build/linux || exit
+# 		rm -rf 8bit 10bit 12bit 2>/dev/null
+# 		mkdir -p 8bit 10bit 12bit
+# 		cd 12bit || exit
+# 		execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF -DMAIN12=ON
+# 		execute make -j $MJOBS
+# 		cd ../10bit || exit
+# 		execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF
+# 		execute make -j $MJOBS
+# 		cd ../8bit || exit
+# 		ln -sf ../10bit/libx265.a libx265_main10.a
+# 		ln -sf ../12bit/libx265.a libx265_main12.a
+# 		execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DEXTRA_LIB="x265_main10.a;x265_main12.a;-ldl" -DEXTRA_LINK_FLAGS=-L. -DLINKED_10BIT=ON -DLINKED_12BIT=ON
+# 		execute make -j $MJOBS
 
-		mv libx265.a libx265_main.a
+# 		mv libx265.a libx265_main.a
 
-		if [[ "$OSTYPE" == "darwin"* ]]; then
-			execute install_name_tool -id "${WORKSPACE}/lib/libx265.198.dylib" libx265.198.dylib
-			execute "${MACOS_LIBTOOL}" -static -o libx265.a libx265_main.a libx265_main10.a libx265_main12.a 2>/dev/null
-		else
-			execute ar -M <<EOF
-CREATE libx265.a
-ADDLIB libx265_main.a
-ADDLIB libx265_main10.a
-ADDLIB libx265_main12.a
-SAVE
-END
-EOF
-		fi
+# 		if is_mac; then
+# 			execute install_name_tool -id "${WORKSPACE}/lib/libx265.199.dylib" libx265.199.dylib
+# 			execute "${MACOS_LIBTOOL}" -static -o libx265.a libx265_main.a libx265_main10.a libx265_main12.a 2>/dev/null
+# 		else
+# 			execute ar -M <<EOF
+# CREATE libx265.a
+# ADDLIB libx265_main.a
+# ADDLIB libx265_main10.a
+# ADDLIB libx265_main12.a
+# SAVE
+# END
+# EOF
+# 		fi
 
-		execute make install
+# 		execute make install
 
-		if [ -n "$LDEXEFLAGS" ]; then
-			sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}/lib/pkgconfig/x265.pc" # The -i.backup is intended and required on MacOS: https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
-		fi
+# 		if [ -n "$LDEXEFLAGS" ]; then
+# 			sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}/lib/pkgconfig/x265.pc" # The -i.backup is intended and required on MacOS: https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
+# 		fi
 
-		build_done "x265" "3.5"
-	fi
-	CONFIGURE_OPTIONS+=("--enable-libx265")
+# 		build_done "x265" "3.5"
+# 	fi
+# 	CONFIGURE_OPTIONS+=("--enable-libx265")
 # fi
 
 if build "libvpx" "1.10.0"; then
@@ -597,25 +597,25 @@ if build "twolame"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libtwolame")
 
-if build "av1" "ae2be80"; then
-	# libaom ae2be80 == v3.1.2
-	download "https://aomedia.googlesource.com/aom/+archive/ae2be8030200925895fa6e98bd274ffdb595cbf6.tar.gz" "av1.tar.gz" "av1"
-	make_dir "$PACKAGES"/aom_build
-	cd "$PACKAGES"/aom_build || exit
-	if $MACOS_M1; then
-		execute cmake -DEBUILD_SHARED_LIBS=1 -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCONFIG_RUNTIME_CPU_DETECT=0 "$PACKAGES"/av1
-	else
-		execute cmake -DEBUILD_SHARED_LIBS=1 -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib "$PACKAGES"/av1
-	fi
-	execute make -j $MJOBS
+# if build "av1" "ae2be80"; then
+# 	# libaom ae2be80 == v3.1.2
+# 	download "https://aomedia.googlesource.com/aom/+archive/ae2be8030200925895fa6e98bd274ffdb595cbf6.tar.gz" "av1.tar.gz" "av1"
+# 	make_dir "$PACKAGES"/aom_build
+# 	cd "$PACKAGES"/aom_build || exit
+# 	if $MACOS_M1; then
+# 		execute cmake -DEBUILD_SHARED_LIBS=1 -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCONFIG_RUNTIME_CPU_DETECT=0 "$PACKAGES"/av1
+# 	else
+# 		execute cmake -DEBUILD_SHARED_LIBS=1 -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib "$PACKAGES"/av1
+# 	fi
+# 	execute make -j $MJOBS
 
-	set_mac_install_name "libaom.2.0.0.dylib" "libaom.2.dylib"
+# 	set_mac_install_name "libaom.2.0.0.dylib" "libaom.2.dylib"
 
-	execute make install
+# 	execute make install
 
-	build_done "av1" "ae2be80"
-fi
-CONFIGURE_OPTIONS+=("--enable-libaom")
+# 	build_done "av1" "ae2be80"
+# fi
+# CONFIGURE_OPTIONS+=("--enable-libaom")
 
 if build "zimg" "3.0.3"; then
 	download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.3.tar.gz" "zimg-3.0.3.tar.gz" "zimg"
@@ -650,7 +650,7 @@ if command_exists "python3"; then
 	if build "serd" "0.30.10"; then
 		download "https://gitlab.com/drobilla/serd/-/archive/v0.30.10/serd-v0.30.10.tar.gz" "serd-v0.30.10.tar.gz"
 		execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/serd-v0.30.10/waflib/"
-		execute ./waf configure --prefix="${WORKSPACE}" --no-static --shared --no-posix
+		execute ./waf configure --prefix="${WORKSPACE}" --no-posix
 		execute ./waf
 		execute ./waf install
 		build_done "serd" "0.30.10"
@@ -666,7 +666,7 @@ if command_exists "python3"; then
 	if build "sord" "0.16.8"; then
 		download "https://gitlab.com/drobilla/sord/-/archive/v0.16.8/sord-v0.16.8.tar.gz" "sord-v0.16.8.tar.gz"
 		execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/sord-v0.16.8/waflib/"
-		execute ./waf configure --prefix="${WORKSPACE}" CFLAGS="${CFLAGS}" --no-static --shared --no-utils
+		execute ./waf configure --prefix="${WORKSPACE}" CFLAGS="${CFLAGS}" --no-utils
 		execute ./waf CFLAGS="${CFLAGS}"
 		execute ./waf install
 
@@ -675,7 +675,7 @@ if command_exists "python3"; then
 	if build "sratom" "0.6.8"; then
 		download "https://gitlab.com/lv2/sratom/-/archive/v0.6.8/sratom-v0.6.8.tar.gz" "sratom-v0.6.8.tar.gz"
 		execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/sratom-v0.6.8/waflib/"
-		execute ./waf configure --prefix="${WORKSPACE}" --no-static --shared
+		execute ./waf configure --prefix="${WORKSPACE}"
 		execute ./waf
 		execute ./waf install
 
@@ -684,7 +684,7 @@ if command_exists "python3"; then
 	if build "lilv" "0.24.12"; then
 		download "https://gitlab.com/lv2/lilv/-/archive/v0.24.12/lilv-v0.24.12.tar.gz" "lilv-v0.24.12.tar.gz"
 		execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/lilv-v0.24.12/waflib/"
-		execute ./waf configure --prefix="${WORKSPACE}" --no-static --shared --no-utils
+		execute ./waf configure --prefix="${WORKSPACE}" --no-utils
 		execute ./waf
 		execute ./waf install
 		build_done "lilv" "0.24.12"
@@ -795,13 +795,13 @@ CONFIGURE_OPTIONS+=("--enable-libspeex")
 ## image library
 ##
 
-if build "libtiff" "4.3.0"; then
-	download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
-	execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
-	execute make -j $MJOBS
-	execute make install
-	build_done "libtiff" "4.3.0"
-fi
+# if build "libtiff" "4.3.0"; then
+# 	download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
+# 	execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+# 	execute make -j $MJOBS
+# 	execute make install
+# 	build_done "libtiff" "4.3.0"
+# fi
 if build "libpng" "1.6.37"; then
 	download "https://sourceforge.net/projects/libpng/files/libpng16/1.6.37/libpng-1.6.37.tar.gz/download?use_mirror=gigenet" "libpng-1.6.37.tar.gz"
 	export LDFLAGS="${LDFLAGS}"
@@ -927,7 +927,7 @@ fi
 ##
 
 EXTRA_VERSION=""
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if is_mac; then
 	EXTRA_VERSION="${FFMPEG_VERSION}"
 fi
 
@@ -939,6 +939,7 @@ download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/$FFMPEG_VE
 	--disable-static \
 	--enable-pthreads \
 	--enable-shared \
+	--enable-gpl \
 	--enable-version3 \
 	--extra-cflags="${CFLAGS}" \
 	--extra-ldexeflags="${LDEXEFLAGS}" \
