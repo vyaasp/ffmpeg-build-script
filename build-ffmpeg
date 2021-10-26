@@ -948,6 +948,7 @@ download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/$FFMPEG_VE
 	--disable-static \
 	--enable-pthreads \
 	--enable-shared \
+	# TODO: I'm assuming we don't want this but ffmpeg complained without it.
 	--enable-gpl \
 	--enable-version3 \
 	--extra-cflags="${CFLAGS}" \
