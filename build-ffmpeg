@@ -750,12 +750,19 @@ fi
 ## image library
 ##
 
-if build "libtiff" "4.3.0"; then
-  download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
-  execute make -j $MJOBS
-  execute make install
-  build_done "libtiff" "4.3.0"
+# [ Descript - cvanwink ]
+# Disable libtiff on arm64 as it doesn't compile
+#   ../version:1:1: error: expected unqualified-id
+#   4.3.0
+#   ^
+if ! $MACOS_M1; then
+  if build "libtiff" "4.3.0"; then
+    download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    execute make -j $MJOBS
+    execute make install
+    build_done "libtiff" "4.3.0"
+  fi
 fi
 if build "libpng" "1.6.37"; then
   download "https://sourceforge.net/projects/libpng/files/libpng16/1.6.37/libpng-1.6.37.tar.gz/download?use_mirror=gigenet" "libpng-1.6.37.tar.gz"
