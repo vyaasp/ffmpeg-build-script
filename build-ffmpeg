@@ -751,11 +751,11 @@ fi
 ##
 
 # [ Descript - cvanwink ]
-# Disable libtiff on arm64 as it doesn't compile
+# Disable libtiff on arm64 and x86_64 as it doesn't compile
 #   ../version:1:1: error: expected unqualified-id
 #   4.3.0
 #   ^
-if ! $MACOS_M1; then
+if false; then
   if build "libtiff" "4.3.0"; then
     download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
     execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
