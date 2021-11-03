@@ -17,6 +17,7 @@ MACOS_M1=false
 CONFIGURE_OPTIONS=()
 NONFREE_AND_GPL=false
 LATEST=false
+SHARED_LIBRARIES=false
 
 # Check for Apple Silicon
 if [[ ("$(uname -m)" == "arm64") && ("$OSTYPE" == "darwin"*) ]]; then
@@ -203,6 +204,7 @@ usage() {
   echo "      --latest                   Build latest version of dependencies if newer available"
   echo "      --full-static              Build a full static FFmpeg binary (eg. glibc, pthreads etc...) **only Linux**"
   echo "                                 Note: Because of the NSS (Name Service Switch), glibc does not recommend static links."
+  echo "      --full-shared              Build all shared libraries. Cannot be used with --full-static"
   echo ""
 }
 
@@ -243,6 +245,9 @@ while (($# > 0)); do
     if [[ "$1" == "--latest" ]]; then
       LATEST=true
     fi
+    if [[ "$1" == "--full-shared" ]]; then
+      SHARED_LIBRARIES=true
+    fi
     shift
     ;;
   *)
@@ -260,6 +265,11 @@ if [ -z "$bflag" ]; then
   exit 0
 fi
 
+if [[ ($SHARED_LIBRARIES == true) && ($LDEXEFLAGS == true) ]]; then
+  usage
+  exit 1
+fi
+
 echo "Using $MJOBS make jobs simultaneously."
 
 if $NONFREE_AND_GPL; then
@@ -268,6 +278,10 @@ fi
 
 if [ -n "$LDEXEFLAGS" ]; then
   echo "Start the build in full static mode."
+fi
+
+if $SHARED_LIBRARIES; then
+  echo "Building shared libraries."
 fi
 
 mkdir -p "$PACKAGES"
@@ -323,7 +337,11 @@ fi
 
 if build "nasm" "2.15.05"; then
   download "https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.xz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+  else
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  fi
   execute make -j $MJOBS
   execute make install
   build_done "nasm" "2.15.05"
@@ -331,7 +349,11 @@ fi
 
 if build "zlib" "1.2.11"; then
   download "https://www.zlib.net/zlib-1.2.11.tar.gz"
-  execute ./configure --static --prefix="${WORKSPACE}"
+  if $SHARED_LIBRARIES; then
+    execute ./configure --shared --prefix="${WORKSPACE}"
+  else
+    execute ./configure --static --prefix="${WORKSPACE}"
+  fi
   execute make -j $MJOBS
   execute make install
   build_done "zlib" "1.2.11"
@@ -364,7 +386,11 @@ fi
 
 if build "libtool" "2.4.6"; then
   download "https://ftpmirror.gnu.org/libtool/libtool-2.4.6.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --enable-static --disable-shared
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --disable-static --enable-shared
+  else
+    execute ./configure --prefix="${WORKSPACE}" --enable-static --disable-shared
+  fi
   execute make -j $MJOBS
   execute make install
   build_done "libtool" "2.4.6"
@@ -418,7 +444,11 @@ if command_exists "python3"; then
     if $MACOS_M1; then
       export CFLAGS="-arch arm64"
     fi
-    execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static --libdir="${WORKSPACE}"/lib
+    if $SHARED_LIBRARIES; then
+      execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=shared --libdir="${WORKSPACE}"/lib
+    else
+      execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static --libdir="${WORKSPACE}"/lib
+    fi
     execute ninja -C build
     execute ninja -C build install
     # [ Descript - cvanwink ]
@@ -437,7 +467,11 @@ if ! $MACOS_M1; then
     # Last known working commit which passed CI Tests from HEAD branch
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/1a3e32b8fdc4abf5c093ee01dfa82803afc75fb4/SVT-AV1-1a3e32b8fdc4abf5c093ee01dfa82803afc75fb4.tar.gz" "svtav1-1a3e32b.tar.gz"
     cd "${PACKAGES}"/svtav1-1a3e32b/Build/linux || exit
-    execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=OFF ../.. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+    if $SHARED_LIBRARIES; then
+      execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=ON ../.. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+    else
+      execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=OFF ../.. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+    fi
     execute make -j $MJOBS
     execute make install
     execute cp SvtAv1Enc.pc "${WORKSPACE}/lib/pkgconfig/"
@@ -464,14 +498,26 @@ if $NONFREE_AND_GPL; then
     cd "${PACKAGES}"/x264-5db6aa6 || exit
 
     if [[ "$OSTYPE" == "linux-gnu" ]]; then
-      execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic CXXFLAGS="-fPIC"
+      if $SHARED_LIBRARIES; then
+        execute ./configure --prefix="${WORKSPACE}" --enable-shared --enable-pic CXXFLAGS="-fPIC"
+      else
+        execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic CXXFLAGS="-fPIC"
+      fi
     else
-      execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic
+      if $SHARED_LIBRARIES; then
+        execute ./configure --prefix="${WORKSPACE}" --enable-shared --enable-pic
+      else
+        execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic
+      fi
     fi
 
     execute make -j $MJOBS
     execute make install
-    execute make install-lib-static
+    if $SHARED_LIBRARIES; then
+      execute make install-lib-shared
+    else
+      execute make install-lib-static
+    fi
 
     build_done "x264" "5db6aa6"
   fi
@@ -485,15 +531,27 @@ if $NONFREE_AND_GPL; then
     rm -rf 8bit 10bit 12bit 2>/dev/null
     mkdir -p 8bit 10bit 12bit
     cd 12bit || exit
-    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF -DMAIN12=ON
+    if $SHARED_LIBRARIES; then
+      execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF -DMAIN12=ON
+    else
+      execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF -DMAIN12=ON
+    fi
     execute make -j $MJOBS
     cd ../10bit || exit
-    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF
+    if $SHARED_LIBRARIES; then
+      execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF
+    else
+      execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF
+    fi
     execute make -j $MJOBS
     cd ../8bit || exit
     ln -sf ../10bit/libx265.a libx265_main10.a
     ln -sf ../12bit/libx265.a libx265_main12.a
-    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DEXTRA_LIB="x265_main10.a;x265_main12.a;-ldl" -DEXTRA_LINK_FLAGS=-L. -DLINKED_10BIT=ON -DLINKED_12BIT=ON
+    if $SHARED_LIBRARIES; then
+      execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=ON -DBUILD_SHARED_LIBS=ON -DEXTRA_LIB="x265_main10.a;x265_main12.a;-ldl" -DEXTRA_LINK_FLAGS=-L. -DLINKED_10BIT=ON -DLINKED_12BIT=ON
+    else
+      execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DEXTRA_LIB="x265_main10.a;x265_main12.a;-ldl" -DEXTRA_LINK_FLAGS=-L. -DLINKED_10BIT=ON -DLINKED_12BIT=ON
+    fi
     execute make -j $MJOBS
 
     mv libx265.a libx265_main.a
@@ -531,7 +589,11 @@ if build "libvpx" "1.10.0"; then
     sed "s/-Wl,--no-undefined -Wl,-soname/-Wl,-undefined,error -Wl,-install_name/g" build/make/Makefile.patched >build/make/Makefile
   fi
 
-  execute ./configure --prefix="${WORKSPACE}" --disable-unit-tests --disable-shared --as=yasm --enable-vp9-highbitdepth
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --disable-unit-tests --enable-shared --disable-static --as=yasm --enable-vp9-highbitdepth
+  else
+    execute ./configure --prefix="${WORKSPACE}" --disable-unit-tests --disable-shared --as=yasm --enable-vp9-highbitdepth
+  fi
   execute make -j $MJOBS
   execute make install
 
@@ -543,7 +605,11 @@ if $NONFREE_AND_GPL; then
   if build "xvidcore" "1.3.7"; then
     download "https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.gz"
     cd build/generic || exit
-    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    if $SHARED_LIBRARIES; then
+      execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+    else
+      execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    fi
     execute make -j $MJOBS
     execute make install
 
@@ -569,7 +635,11 @@ if $NONFREE_AND_GPL; then
       patch -p1 <fix_cmake_quoting.patch
     fi
 
-    execute cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DUSE_OMP=OFF -DENABLE_SHARED=off .
+    if $SHARED_LIBRARIES; then
+      execute cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DUSE_OMP=OFF -DENABLE_SHARED=on .
+    else
+      execute cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DUSE_OMP=OFF -DENABLE_SHARED=off .
+    fi
     execute make
     execute make install
 
@@ -584,9 +654,17 @@ if build "av1" "ae2be80"; then
   make_dir "$PACKAGES"/aom_build
   cd "$PACKAGES"/aom_build || exit
   if $MACOS_M1; then
-    execute cmake -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCONFIG_RUNTIME_CPU_DETECT=0 "$PACKAGES"/av1
+    if $SHARED_LIBRARIES; then
+      execute cmake -DENABLE_TESTS=0 -DEBUILD_SHARED_LIBS=1 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCONFIG_RUNTIME_CPU_DETECT=0 "$PACKAGES"/av1
+    else
+      execute cmake -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCONFIG_RUNTIME_CPU_DETECT=0 "$PACKAGES"/av1
+    fi
   else
-    execute cmake -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib "$PACKAGES"/av1
+    if $SHARED_LIBRARIES; then
+      execute cmake -DENABLE_TESTS=0 -DEBUILD_SHARED_LIBS=1 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib "$PACKAGES"/av1
+    else
+      execute cmake -DENABLE_TESTS=0 -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib "$PACKAGES"/av1
+    fi
   fi
   execute make -j $MJOBS
   execute make install
@@ -600,7 +678,11 @@ if build "zimg" "3.0.3"; then
   cd zimg-release-3.0.3 || exit
   execute "${WORKSPACE}/bin/libtoolize" -i -f -q
   execute ./autogen.sh --prefix="${WORKSPACE}"
-  execute ./configure --prefix="${WORKSPACE}" --enable-static --disable-shared
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --disable-static --enable-shared
+  else
+    execute ./configure --prefix="${WORKSPACE}" --enable-static --disable-shared
+  fi
   execute make -j $MJOBS
   execute make install
   build_done "zimg" "3.0.3"
@@ -628,14 +710,22 @@ if command_exists "python3"; then
   if build "serd" "0.30.10"; then
     download "https://gitlab.com/drobilla/serd/-/archive/v0.30.10/serd-v0.30.10.tar.gz" "serd-v0.30.10.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/serd-v0.30.10/waflib/"
-    execute ./waf configure --prefix="${WORKSPACE}" --static --no-shared --no-posix
+    if $SHARED_LIBRARIES; then
+      execute ./waf configure --prefix="${WORKSPACE}" --no-posix
+    else
+      execute ./waf configure --prefix="${WORKSPACE}" --static --no-shared --no-posix
+    fi
     execute ./waf
     execute ./waf install
     build_done "serd" "0.30.10"
   fi
   if build "pcre" "8.44"; then
     download "https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz" "pcre-8.44.tar.gz"
-    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    if $SHARED_LIBRARIES; then
+      execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+    else
+      execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    fi
     execute make -j $MJOBS
     execute make install
 
@@ -644,7 +734,11 @@ if command_exists "python3"; then
   if build "sord" "0.16.8"; then
     download "https://gitlab.com/drobilla/sord/-/archive/v0.16.8/sord-v0.16.8.tar.gz" "sord-v0.16.8.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/sord-v0.16.8/waflib/"
-    execute ./waf configure --prefix="${WORKSPACE}" CFLAGS="${CFLAGS}" --static --no-shared --no-utils
+    if $SHARED_LIBRARIES; then
+      execute ./waf configure --prefix="${WORKSPACE}" CFLAGS="${CFLAGS}" --no-utils
+    else
+      execute ./waf configure --prefix="${WORKSPACE}" CFLAGS="${CFLAGS}" --static --no-shared --no-utils
+    fi
     execute ./waf CFLAGS="${CFLAGS}"
     execute ./waf install
 
@@ -653,7 +747,11 @@ if command_exists "python3"; then
   if build "sratom" "0.6.8"; then
     download "https://gitlab.com/lv2/sratom/-/archive/v0.6.8/sratom-v0.6.8.tar.gz" "sratom-v0.6.8.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/sratom-v0.6.8/waflib/"
-    execute ./waf configure --prefix="${WORKSPACE}" --static --no-shared
+    if $SHARED_LIBRARIES; then
+      execute ./waf configure --prefix="${WORKSPACE}"
+    else
+      execute ./waf configure --prefix="${WORKSPACE}" --static --no-shared
+    fi
     execute ./waf
     execute ./waf install
 
@@ -662,7 +760,11 @@ if command_exists "python3"; then
   if build "lilv" "0.24.12"; then
     download "https://gitlab.com/lv2/lilv/-/archive/v0.24.12/lilv-v0.24.12.tar.gz" "lilv-v0.24.12.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/lilv-v0.24.12/waflib/"
-    execute ./waf configure --prefix="${WORKSPACE}" --static --no-shared --no-utils
+    if $SHARED_LIBRARIES; then
+      execute ./waf configure --prefix="${WORKSPACE}" --no-utils
+    else
+      execute ./waf configure --prefix="${WORKSPACE}" --static --no-shared --no-utils
+    fi
     execute ./waf
     execute ./waf install
     build_done "lilv" "0.24.12"
@@ -675,7 +777,11 @@ fi
 
 if build "opencore" "0.1.5"; then
   download "https://sourceforge.net/projects/opencore-amr/files/opencore-amr/opencore-amr-0.1.5.tar.gz/download?use_mirror=gigenet" "opencore-amr-0.1.5.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+  else
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  fi
   execute make -j $MJOBS
   execute make install
 
@@ -685,7 +791,13 @@ CONFIGURE_OPTIONS+=("--enable-libopencore_amrnb" "--enable-libopencore_amrwb")
 
 if build "lame" "3.100"; then
   download "https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download?use_mirror=gigenet" "lame-3.100.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  if $SHARED_LIBRARIES; then
+    sed "/lame_init_old/d" include/libmp3lame.sym > include/libmp3lame.sym.patched
+	  mv include/libmp3lame.sym.patched include/libmp3lame.sym
+    execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+  else
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  fi
   execute make -j $MJOBS
   execute make install
 
@@ -695,7 +807,11 @@ CONFIGURE_OPTIONS+=("--enable-libmp3lame")
 
 if build "opus" "1.3.1"; then
   download "https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+  else
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  fi
   execute make -j $MJOBS
   execute make install
 
@@ -705,7 +821,11 @@ CONFIGURE_OPTIONS+=("--enable-libopus")
 
 if build "libogg" "1.3.3"; then
   download "https://ftp.osuosl.org/pub/xiph/releases/ogg/libogg-1.3.3.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+  else
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  fi
   execute make -j $MJOBS
   execute make install
   build_done "libogg" "1.3.3"
@@ -713,7 +833,11 @@ fi
 
 if build "libvorbis" "1.3.6"; then
   download "https://ftp.osuosl.org/pub/xiph/releases/vorbis/libvorbis-1.3.6.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --enable-static --disable-shared --disable-oggtest
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --disable-static --enable-shared --disable-oggtest
+  else
+    execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --enable-static --disable-shared --disable-oggtest
+  fi
   execute make -j $MJOBS
   execute make install
 
@@ -726,7 +850,11 @@ if build "libtheora" "1.1.1"; then
   sed "s/-fforce-addr//g" configure >configure.patched
   chmod +x configure.patched
   mv configure.patched configure
-  execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --enable-static --disable-shared --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --disable-static --enable-shared --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
+  else
+    execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --enable-static --disable-shared --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
+  fi
   execute make -j $MJOBS
   execute make install
 
@@ -737,7 +865,11 @@ CONFIGURE_OPTIONS+=("--enable-libtheora")
 if $NONFREE_AND_GPL; then
   if build "fdk_aac" "2.0.2"; then
     download "https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet" "fdk-aac-2.0.2.tar.gz"
-    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --enable-pic
+    if $SHARED_LIBRARIES; then
+      execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static --enable-pic
+    else
+      execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --enable-pic
+    fi
     execute make -j $MJOBS
     execute make install
 
@@ -758,7 +890,11 @@ fi
 if false; then
   if build "libtiff" "4.3.0"; then
     download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
-    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    if $SHARED_LIBRARIES; then
+      execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+    else
+      execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    fi
     execute make -j $MJOBS
     execute make install
     build_done "libtiff" "4.3.0"
@@ -768,7 +904,11 @@ if build "libpng" "1.6.37"; then
   download "https://sourceforge.net/projects/libpng/files/libpng16/1.6.37/libpng-1.6.37.tar.gz/download?use_mirror=gigenet" "libpng-1.6.37.tar.gz"
   export LDFLAGS="${LDFLAGS}"
   export CPPFLAGS="${CFLAGS}"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+  else
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  fi
   execute make -j $MJOBS
   execute make install
   build_done "libpng" "1.6.37"
@@ -784,10 +924,18 @@ CPPFLAGS=
 if false; then
   if build "libwebp" "1.2.0"; then
     download "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.0.tar.gz" "libwebp-1.2.0.tar.gz"
-    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    if $SHARED_LIBRARIES; then
+      execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+    else
+      execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    fi
     make_dir build
     cd build || exit
-    execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON ../
+    if $SHARED_LIBRARIES; then
+      execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=ON -DENABLE_STATIC=OFF ../
+    else
+      execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON ../
+    fi
     execute make -j $MJOBS
     execute make install
 
@@ -802,7 +950,11 @@ fi
 
 if build "libsdl" "2.0.14"; then
   download "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  if $SHARED_LIBRARIES; then
+    execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+  else
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  fi
   execute make -j $MJOBS
   execute make install
 
@@ -815,7 +967,11 @@ if $NONFREE_AND_GPL; then
     export OPENSSL_ROOT_DIR="${WORKSPACE}"
     export OPENSSL_LIB_DIR="${WORKSPACE}"/lib
     export OPENSSL_INCLUDE_DIR="${WORKSPACE}"/include/
-    execute cmake . -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DUSE_STATIC_LIBSTDCXX=ON
+    if $SHARED_LIBRARIES; then
+      execute cmake . -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=ON -DENABLE_STATIC=OFF -DENABLE_APPS=OFF -DUSE_STATIC_LIBSTDCXX=ON
+    else
+      execute cmake . -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DUSE_STATIC_LIBSTDCXX=ON
+    fi
     execute make install
 
     if [ -n "$LDEXEFLAGS" ]; then
@@ -884,6 +1040,24 @@ fi
 build "ffmpeg" "$FFMPEG_VERSION"
 download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/$FFMPEG_VERSION.tar.gz" "FFmpeg-release-$FFMPEG_VERSION.tar.gz"
 # shellcheck disable=SC2086
+if $SHARED_LIBRARIES; then
+./configure "${CONFIGURE_OPTIONS[@]}" \
+  --disable-debug \
+  --disable-doc \
+  --disable-static \
+  --enable-pthreads \
+  --enable-shared\
+  --enable-small \
+  --enable-version3 \
+  --extra-cflags="${CFLAGS}" \
+  --extra-ldexeflags="${LDEXEFLAGS}" \
+  --extra-ldflags="${LDFLAGS}" \
+  --extra-libs="${EXTRALIBS}" \
+  --pkgconfigdir="$WORKSPACE/lib/pkgconfig" \
+  --pkg-config-flags="--static" \
+  --prefix="${WORKSPACE}" \
+  --extra-version="${EXTRA_VERSION}"
+else
 ./configure "${CONFIGURE_OPTIONS[@]}" \
   --disable-debug \
   --disable-doc \
@@ -900,6 +1074,7 @@ download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/$FFMPEG_VE
   --pkg-config-flags="--static" \
   --prefix="${WORKSPACE}" \
   --extra-version="${EXTRA_VERSION}"
+fi
 
 execute make -j $MJOBS
 execute make install
