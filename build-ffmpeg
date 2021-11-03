@@ -776,18 +776,25 @@ fi
 # libwebp can fail to compile on Ubuntu if these flags were left set to CFLAGS
 CPPFLAGS=
 
-if build "libwebp" "1.2.0"; then
-  download "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.0.tar.gz" "libwebp-1.2.0.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
-  make_dir build
-  cd build || exit
-  execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON ../
-  execute make -j $MJOBS
-  execute make install
+# [ Descript - cvanwink ]
+# Disable libwebp on arm64 and x86_64 as it doesn't compile on x86_64
+#    Undefined symbols for architecture x86_64:
+#      "_PrintGifError", referenced from:
+#          _GIFDisplayError in gifdec.c.o
+if false; then
+  if build "libwebp" "1.2.0"; then
+    download "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.0.tar.gz" "libwebp-1.2.0.tar.gz"
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    make_dir build
+    cd build || exit
+    execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON ../
+    execute make -j $MJOBS
+    execute make install
 
-  build_done "libwebp" "1.2.0"
+    build_done "libwebp" "1.2.0"
+  fi
+  CONFIGURE_OPTIONS+=("--enable-libwebp")
 fi
-CONFIGURE_OPTIONS+=("--enable-libwebp")
 
 ##
 ## other library
