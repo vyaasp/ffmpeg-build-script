@@ -851,12 +851,23 @@ if build "libtheora" "1.1.1"; then
   chmod +x configure.patched
   mv configure.patched configure
   if $SHARED_LIBRARIES; then
+    if $MACOSX_M1; then
+      # fix Libtool bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63610
+      export MACOSX_DEPLOYMENT_TARGET=10.11
+    fi
     execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --disable-static --enable-shared --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
   else
     execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --enable-static --disable-shared --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
   fi
   execute make -j $MJOBS
   execute make install
+
+  if $SHARED_LIBRARIES; then
+    if $MACOSX_M1; then
+      # restore from Line 26
+      export MACOSX_DEPLOYMENT_TARGET=11.0
+    fi
+  fi  
 
   build_done "libtheora" "1.1.1"
 fi
