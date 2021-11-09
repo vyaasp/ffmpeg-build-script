@@ -228,8 +228,6 @@ def copyLibraryAndDependencies(src_file, dest_folder):
 
     dest_file = os.path.join(dest_folder, os.path.basename(src_file))
 
-    print(dest_file)
-
     # copy file
     copyLibraryAndSymbolPackage(src_file, dest_folder, True)
     copied_libs.add(src_file)
@@ -276,12 +274,10 @@ def copyLibraryAndDependencies(src_file, dest_folder):
     actual_binary_path = os.path.realpath(dest_file)
 
     if len(this_id):
-      print(' '.join(['/usr/bin/install_name_tool', '-id', '@loader_path/' + this_id, actual_binary_path]))
       subprocess.call(['/usr/bin/install_name_tool', '-id', '@loader_path/' + this_id, actual_binary_path])
     
     if len(loader_paths_to_rewrite) > 0:
         for loader_path in loader_paths_to_rewrite:
-            print(' '.join(['/usr/bin/install_name_tool', '-change', loader_path['old_path'], '@loader_path/' + os.path.basename(loader_path['new_path']), actual_binary_path]))
             subprocess.call(['/usr/bin/install_name_tool', '-change', loader_path['old_path'], '@loader_path/' + os.path.basename(loader_path['new_path']), actual_binary_path])
 
 #
