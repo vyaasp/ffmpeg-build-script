@@ -196,11 +196,21 @@ def main():
     copyOrGenerateSymbolFiles(packages_dir, workspace_lib_dir)
 
     # Generate dSYM files for each executable
+    # and copy their dependencies
     executables = ['ffmpeg', 'ffprobe']
     for executable in executables:
         executable_path = os.path.join(workspace_bin_dir, executable)
+        
+        # check that the build library is runnable
+        subprocess.check_output([executable_path, '-version'])
+
         copyOrGenerateSymbolFile(executable_path, workspace_bin_dir)
         copyLibraryAndDependencies(executable_path, output_dir)
+
+        # check that the copied file is runnable
+        print(subprocess.check_output([os.path.join(output_dir, executable), '-version']).decode('utf-8'))
+
+
 
     # Copy Includes
     shutil.copytree(
