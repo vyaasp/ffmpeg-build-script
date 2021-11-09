@@ -5,7 +5,9 @@ This file is created by Descript to document and augment
 the FFmpeg building process, for use in Descript's environment.
 
 (1) Call build-ffmpeg with the build command
-(2) Copy or generate dSYM symbol files to the output folder
+(2) Copy or generate dSYM symbol files to the workspace folder
+(3) Copy executables from the workspace folder and all built dependencies to platform outputfolder
+(4) Fix dyld ids and loader paths for all built libraries
 '''
 
 import glob
@@ -15,7 +17,6 @@ import platform
 import re
 import shutil
 import subprocess
-
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 packages_dir = os.path.join(cwd, 'packages')
@@ -212,8 +213,6 @@ def main():
 
         # check that the copied file is runnable
         print(subprocess.check_output([os.path.join(output_dir, executable), '-version']).decode('utf-8'))
-
-
 
     # Copy Includes
     shutil.copytree(
