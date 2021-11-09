@@ -143,6 +143,13 @@ def copyLibraryAndDependencies(src_file, dest_folder):
         if not match:
             continue
         src_dependency_file = match[0]
+
+        # fix incorrect usage of @rpath
+        if src_dependency_file.startswith('@rpath/'):
+            fixed_path = os.path.join(workspace_lib_dir, src_dependency_file[7:])
+            loader_paths_to_rewrite.append({'old_path': src_dependency_file, 'new_path': fixed_path})
+            src_dependency_file = fixed_path
+
         if src_dependency_file.startswith('/usr/local'):
             missing_libs.add(src_dependency_file)
         elif src_dependency_file.startswith(workspace_dir):
@@ -190,7 +197,7 @@ def main():
         shutil.rmtree(output_dir)
     os.makedirs(output_dir)
 
-    #buildFFmpeg(cwd, workspace_dir)
+    buildFFmpeg(cwd, workspace_dir)
     
     # Generate dSYM files for each built library
     copyOrGenerateSymbolFiles(packages_dir, workspace_lib_dir)
@@ -200,10 +207,6 @@ def main():
     executables = ['ffmpeg', 'ffprobe']
     for executable in executables:
         executable_path = os.path.join(workspace_bin_dir, executable)
-        
-        # check that the build library is runnable
-        subprocess.check_output([executable_path, '-version'])
-
         copyOrGenerateSymbolFile(executable_path, workspace_bin_dir)
         copyLibraryAndDependencies(executable_path, output_dir)
 
