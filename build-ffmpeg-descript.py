@@ -175,11 +175,11 @@ def copyLibraryAndDependencies(src_file, dest_folder):
     actual_binary_path = os.path.realpath(dest_file)
 
     if len(this_id):
-      subprocess.call(['/usr/bin/install_name_tool', '-id', '@loader_path/' + this_id, actual_binary_path])
+      subprocess.check_output(['/usr/bin/install_name_tool', '-id', '@loader_path/' + this_id, actual_binary_path])
     
     if len(loader_paths_to_rewrite) > 0:
         for loader_path in loader_paths_to_rewrite:
-            subprocess.call(['/usr/bin/install_name_tool', '-change', loader_path['old_path'], '@loader_path/' + os.path.basename(loader_path['new_path']), actual_binary_path])
+            subprocess.check_output(['/usr/bin/install_name_tool', '-change', loader_path['old_path'], '@loader_path/' + os.path.basename(loader_path['new_path']), actual_binary_path])
 
 #
 #
