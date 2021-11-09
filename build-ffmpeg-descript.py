@@ -64,7 +64,6 @@ def copyOrGenerateSymbolFile(file, dest):
         # example:
         #   ./packages/libtheora-1.1.1/lib/.libs/libtheoraenc.1.dylib.dSYM/Contents/Resources/DWARF/libtheoraenc.1.dylib
         try:
-
             allParts = fileref.parts
             symbolDirIndex = allParts.index(symbolFileName) # throws ValueError if not in allParts
             symbolDirParts = allParts[:symbolDirIndex + 1]
@@ -86,7 +85,9 @@ def copyOrGenerateSymbolFile(file, dest):
 #
 def copyOrGenerateSymbolFiles(source, dest):
     for fileref in pathlib.Path(source + '/').glob('**/*.dylib'):
-        copyOrGenerateSymbolFile(str(fileref), dest)
+      copyOrGenerateSymbolFile(str(fileref), dest)
+    for fileref in pathlib.Path(source + '/').glob('**/*.so*'):
+      copyOrGenerateSymbolFile(str(fileref), dest)
 
 #
 #
@@ -142,8 +143,6 @@ def copyLibraryAndDependencies(src_file, dest_folder):
         if not match:
             continue
         src_dependency_file = match[0]
-        if (src_dependency_file == 'libvpx.so.6'):
-          breakpoint;
         if src_dependency_file.startswith('/usr/local'):
             missing_libs.add(src_dependency_file)
         elif src_dependency_file.startswith(workspace_dir):
@@ -167,6 +166,8 @@ def copyLibraryAndDependencies(src_file, dest_folder):
                         copyLibraryAndDependencies(unversioned_dependency_base_name + '.dylib', dest_folder)
             
             loader_paths_to_rewrite.append({'old_path': src_dependency_file, 'new_path': dest_dependency_path})
+        elif not src_dependency_file.startswith('/'):
+          breakpoint
         else:
             skipped_libs.add(src_dependency_file)
 
