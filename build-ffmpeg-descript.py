@@ -26,7 +26,6 @@ workspace_lib_dir = os.path.join(workspace_dir, 'lib')
 skipped_libs = set()
 copied_libs = set()
 missing_libs = set()
-names_without_version = set()
 
 #
 #   builds FFmpeg and logs output to build-ffmpeg.log.txt
@@ -200,7 +199,7 @@ def copyLibraryAndSymbolPackage(src_file, dest_folder, overwrite):
     # copy file
     if overwrite and os.path.exists(dest_file):
         os.remove(dest_file)
-    shutil.copy2(src_file, dest_file)
+    shutil.copy2(src_file, dest_file, follow_symlinks=False)
 
     # copy symbol file
     src_symbol_package = src_file + '.dSYM'
@@ -211,17 +210,32 @@ def copyLibraryAndSymbolPackage(src_file, dest_folder, overwrite):
         if not os.path.exists(dest_symbol_package):
           shutil.copytree(src_symbol_package, dest_symbol_package)
 
+#
+#
+#
+def getFilenameWithoutVersion(file_name) -> str:
+  result = file_name.split('.')[0]
+  # libSDL2 weirdly has hypthen after then name (i.e., libSDL2-2.0.0.dylib)
+  if 'libSDL2' in result:
+    result = 'libSDL2'
+  return result
 
 #
 # Recursive function to copy a library and its (non-system) dependencies
 # also fixes loader paths for each library
 #
 def copyLibraryAndDependencies(src_file, dest_folder):
-    
+
     dest_file = os.path.join(dest_folder, os.path.basename(src_file))
+
+    print(dest_file)
 
     # copy file
     copyLibraryAndSymbolPackage(src_file, dest_folder, True)
+    copied_libs.add(src_file)
+    copied_libs.add(dest_file)
+
+    this_id = ''
 
     # recursively copy dependencies
     otool_proc = subprocess.Popen(['/usr/bin/otool', '-L', src_file], stdout=subprocess.PIPE)
@@ -236,23 +250,19 @@ def copyLibraryAndDependencies(src_file, dest_folder):
             missing_libs.add(src_dependency_file)
         elif src_dependency_file.startswith(workspace_dir):
             dependency_name = os.path.basename(src_dependency_file)
+            if not len(this_id):
+              this_id = dependency_name
             dest_dependency_path = os.path.join(dest_folder, dependency_name)
             if not src_dependency_file in copied_libs:
-                copied_libs.add(src_dependency_file)
-                copied_libs.add(dest_dependency_path)
                 if src_dependency_file != dest_dependency_path:
-                    # copy sym-linked libraries as well
-                    dependency_name_without_version = dependency_name.split('.')[0]
-                    # libSDL2 weirdly has hypthen after then name (i.e., libSDL2-2.0.0.dylib)
-                    if 'libSDL2' in dependency_name:
-                        dependency_name_without_version = 'libSDL2'
-                    names_without_version.add(dependency_name_without_version)
-                    
-                    unversioned_dependency_base_name = os.path.join(workspace_lib_dir, dependency_name_without_version)
-
-                    # Copy each version variant file
-                    for variant_file in glob.glob(unversioned_dependency_base_name + r'*.dylib'):
-                        copyLibraryAndSymbolPackage(variant_file, dest_folder, False)
+                    # Copy each version variant file (often symlinks)
+                    dependency_name_without_version = getFilenameWithoutVersion(src_dependency_file)
+                    unversioned_dependency_base_name = os.path.join(os.path.dirname(src_dependency_file), dependency_name_without_version)
+                    for variant_src_file in glob.glob(unversioned_dependency_base_name + r'*.dylib'):
+                        copyLibraryAndSymbolPackage(variant_src_file, dest_folder, False)
+                        variant_dest_file = os.path.join(dest_folder, os.path.basename(variant_src_file))
+                        copied_libs.add(variant_src_file)
+                        copied_libs.add(variant_dest_file)
 
                     # RECURSIVELY copy dependencies
                     if (os.path.exists(unversioned_dependency_base_name + '.dylib')):
@@ -265,10 +275,14 @@ def copyLibraryAndDependencies(src_file, dest_folder):
     # find the non-sym-linked version of this library
     actual_binary_path = os.path.realpath(dest_file)
 
+    if len(this_id):
+      print(' '.join(['/usr/bin/install_name_tool', '-id', '@loader_path/' + this_id, actual_binary_path]))
+      subprocess.call(['/usr/bin/install_name_tool', '-id', '@loader_path/' + this_id, actual_binary_path])
+    
     if len(loader_paths_to_rewrite) > 0:
-        for lib in loader_paths_to_rewrite:
-            print(' '.join(['/usr/bin/install_name_tool', '-id', '@loader_path/' + dest_file, '-change', lib['old_path'], '@loader_path/' + os.path.basename(lib['new_path']), actual_binary_path]))
-            install_name_tool_proc = subprocess.call(['/usr/bin/install_name_tool', '-id', '@loader_path/' + dest_file, '-change', lib['old_path'], '@loader_path/' + os.path.basename(lib['new_path']), actual_binary_path])
+        for loader_path in loader_paths_to_rewrite:
+            print(' '.join(['/usr/bin/install_name_tool', '-change', loader_path['old_path'], '@loader_path/' + os.path.basename(loader_path['new_path']), actual_binary_path]))
+            subprocess.call(['/usr/bin/install_name_tool', '-change', loader_path['old_path'], '@loader_path/' + os.path.basename(loader_path['new_path']), actual_binary_path])
 
 #
 #
