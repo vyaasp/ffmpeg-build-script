@@ -8,6 +8,7 @@ the FFmpeg building process, for use in Descript's environment.
 (2) Copy or generate dSYM symbol files to the workspace folder
 (3) Copy executables from the workspace folder and all built dependencies to platform outputfolder
 (4) Fix dyld ids and loader paths for all built libraries
+(5) Zip up the build artifacts
 '''
 
 import glob
@@ -17,13 +18,20 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 
+#
+#   Constants
+#
 cwd = os.path.dirname(os.path.realpath(__file__))
 packages_dir = os.path.join(cwd, 'packages')
 workspace_dir = os.path.join(cwd, 'workspace')
 workspace_bin_dir = os.path.join(workspace_dir, 'bin')
 workspace_lib_dir = os.path.join(workspace_dir, 'lib')
 
+#
+#   Keep track of which libraries are copied, skipped, or missing
+#
 skipped_libs = set()
 copied_libs = set()
 missing_libs = set()
@@ -31,9 +39,9 @@ missing_libs = set()
 #
 #   builds FFmpeg and logs output to build-ffmpeg.log.txt
 #
-def buildFFmpeg(script_dir, workspace_dir):
+def buildFFmpeg(script_dir, log_dir):
     # create a log file for the build-ffmpeg command for build archival purposes
-    build_ffmpeg_log_filename = os.path.join(workspace_dir, 'build-ffmpeg.log.txt')
+    build_ffmpeg_log_filename = os.path.join(log_dir, 'build-ffmpeg.log.txt')
     os.makedirs(os.path.dirname(build_ffmpeg_log_filename), exist_ok=True)
     build_ffmpeg_log_file = open('./workspace/build-ffmpeg.log.txt', 'w')
 
@@ -91,7 +99,8 @@ def copyOrGenerateSymbolFiles(source, dest):
       copyOrGenerateSymbolFile(str(fileref), dest)
 
 #
-#
+#   Copies a library and its corresponding .dSYM bundle
+#   (if present)
 #
 def copyLibraryAndSymbolPackage(src_file, dest_folder, overwrite):
     dest_file = os.path.join(dest_folder, os.path.basename(src_file))
@@ -111,7 +120,8 @@ def copyLibraryAndSymbolPackage(src_file, dest_folder, overwrite):
           shutil.copytree(src_symbol_package, dest_symbol_package)
 
 #
-#
+#   Helper function to get a base name of a library
+#   without version numbers
 #
 def getFilenameWithoutVersion(file_name) -> str:
   result = file_name.split('.')[0]
@@ -133,6 +143,7 @@ def copyLibraryAndDependencies(src_file, dest_folder):
     copied_libs.add(src_file)
     copied_libs.add(dest_file)
 
+    # identifier for _this_ library
     this_id = ''
 
     # recursively copy dependencies
@@ -152,11 +163,14 @@ def copyLibraryAndDependencies(src_file, dest_folder):
             src_dependency_file = fixed_path
 
         if src_dependency_file.startswith('/usr/local'):
+            # the build grabbed libraries installed on this machine
+            # which might not be available on other machines
             missing_libs.add(src_dependency_file)
         elif src_dependency_file.startswith(workspace_dir):
             dependency_name = os.path.basename(src_dependency_file)
             if not len(this_id):
-              this_id = dependency_name
+                # first dependency is the identifier for this library
+                this_id = dependency_name
             dest_dependency_path = os.path.join(dest_folder, dependency_name)
             if not src_dependency_file in copied_libs:
                 if src_dependency_file != dest_dependency_path:
@@ -174,20 +188,33 @@ def copyLibraryAndDependencies(src_file, dest_folder):
                         copyLibraryAndDependencies(unversioned_dependency_base_name + '.dylib', dest_folder)
             
             loader_paths_to_rewrite.append({'old_path': src_dependency_file, 'new_path': dest_dependency_path})
-        elif not src_dependency_file.startswith('/'):
-          breakpoint
         else:
             skipped_libs.add(src_dependency_file)
 
     # find the non-sym-linked version of this library
     actual_binary_path = os.path.realpath(dest_file)
 
+    # correct the loader path for this library
     if len(this_id):
       subprocess.check_output(['/usr/bin/install_name_tool', '-id', '@loader_path/' + this_id, actual_binary_path])
     
+    # correct the loader paths for all dependencies
     if len(loader_paths_to_rewrite) > 0:
         for loader_path in loader_paths_to_rewrite:
             subprocess.check_output(['/usr/bin/install_name_tool', '-change', loader_path['old_path'], '@loader_path/' + os.path.basename(loader_path['new_path']), actual_binary_path])
+
+#
+#   Read the version string from ./build-ffmpeg
+#
+def readVersion() -> str:
+    result = ''
+    with open(os.path.join(cwd, 'build-ffmpeg')) as f:
+        lines = f.readlines()
+        for line in lines:
+            if line.startswith('SCRIPT_VERSION='):
+                result = line[15:].strip()
+    return result
+
 
 #
 #
@@ -198,7 +225,7 @@ def main():
         shutil.rmtree(output_dir)
     os.makedirs(output_dir)
 
-    buildFFmpeg(cwd, workspace_dir)
+    buildFFmpeg(cwd, output_dir)
     
     # Generate dSYM files for each built library
     copyOrGenerateSymbolFiles(packages_dir, workspace_lib_dir)
@@ -227,6 +254,10 @@ def main():
 
     for lib in sorted(missing_libs):
       print ('[WARNING] missing ' + lib)
+
+    # bundle up the build artifacts
+    os.chdir(output_dir)
+    subprocess.check_output(['/usr/bin/zip', '--symlinks', '-r', '../ffmpeg-ffprobe-shared-' + sys.platform + '-' + platform.machine() + '.' + readVersion() + '.zip', '.'])
 
 #
 #   entry
