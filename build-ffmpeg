@@ -724,18 +724,24 @@ if command_exists "python3"; then
     execute ./waf install
     build_done "serd" "0.30.10"
   fi
-  if build "pcre" "8.44"; then
-    download "https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz" "pcre-8.44.tar.gz"
-    if $SHARED_LIBRARIES; then
-      execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
-    else
-      execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
-    fi
-    execute make -j $MJOBS
-    execute make install
 
-    build_done "pcre" "8.44"
+  # [ Descript - cvanwink ]
+  # FTP for pcre looks to be down
+  if false; then
+    if build "pcre" "8.44"; then
+      download "https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz" "pcre-8.44.tar.gz"
+      if $SHARED_LIBRARIES; then
+        execute ./configure --prefix="${WORKSPACE}" --enable-shared --disable-static
+      else
+        execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+      fi
+      execute make -j $MJOBS
+      execute make install
+
+      build_done "pcre" "8.44"
+    fi
   fi
+
   if build "sord" "0.16.8"; then
     download "https://gitlab.com/drobilla/sord/-/archive/v0.16.8/sord-v0.16.8.tar.gz" "sord-v0.16.8.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/sord-v0.16.8/waflib/"
