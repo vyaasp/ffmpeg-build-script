@@ -306,7 +306,7 @@ def main():
     os.chdir(output_dir)
     shared_zip_name = '-'.join(executables) + '-shared-' + getPlatformMachineVersion() + '.zip'
     args = ['/usr/bin/zip', '--symlinks', '-r', os.path.join('..', shared_zip_name), '.']
-    build_ffmpeg_log_file.write(' '.join(args))
+    build_ffmpeg_log_file.write(' '.join(args) + '\n')
     subprocess.check_output(args)
     
     build_ffmpeg_log_file.write('\nEnd of build-ffmpeg-descript.py\n')
