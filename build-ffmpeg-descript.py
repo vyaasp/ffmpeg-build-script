@@ -43,7 +43,7 @@ def buildFFmpeg(script_dir, log_dir):
     # create a log file for the build-ffmpeg command for build archival purposes
     build_ffmpeg_log_filename = os.path.join(log_dir, 'build-ffmpeg.log.txt')
     os.makedirs(os.path.dirname(build_ffmpeg_log_filename), exist_ok=True)
-    build_ffmpeg_log_file = open('./workspace/build-ffmpeg.log.txt', 'w')
+    build_ffmpeg_log_file = open(build_ffmpeg_log_filename, 'w')
 
     # set environment variables
     env = os.environ
