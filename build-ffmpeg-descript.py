@@ -19,6 +19,7 @@ import re
 import shutil
 import subprocess
 import sys
+from zipfile import ZipFile
 
 #
 #   Constants
@@ -47,7 +48,13 @@ def buildFFmpeg(script_dir, log_file):
     
     # call main build script
     build_ffmpeg_path = os.path.join(script_dir, 'build-ffmpeg')
-    subprocess.call([build_ffmpeg_path, '-b', '--full-shared'], env=env, stdout=log_file)
+    args = [
+        build_ffmpeg_path,
+        '-b',                       # build
+        '--full-shared',            # custom Descript shim to build shared libraries instead of static
+        '--enable-gpl-and-free']    # custom Descript shim to build GPL but not non-free (libpostproc is needed by Beamcoder and requires GPL)
+    log_file.write(' '.join(args) + '\n\n')    
+    subprocess.call(args, env=env, stdout=log_file)
 
 #
 #   Copies symbol file to the workspace destination
@@ -214,6 +221,11 @@ def readVersion() -> str:
                 result = line[15:].strip()
     return result
 
+#
+#   Returns a string like darwin-x86_64.1.31rc2
+#
+def getPlatformMachineVersion() -> str:
+    return sys.platform + '-' + platform.machine() + '.' + readVersion()
 
 #
 #
@@ -225,8 +237,12 @@ def main():
     os.makedirs(output_dir)
 
     # create a log file for the build-ffmpeg command for build archival purposes
-    build_ffmpeg_log_file_path = os.path.join(output_dir, 'build-ffmpeg.log.txt')
+    log_file_name = 'build-ffmpeg-' + getPlatformMachineVersion() + '.log.txt'
+    build_ffmpeg_log_file_path = os.path.join(os.path.dirname(output_dir), log_file_name)
     build_ffmpeg_log_file = open(build_ffmpeg_log_file_path, 'w')
+
+    build_ffmpeg_log_file.write('Begin build-ffmpeg-descript.py\n')
+    build_ffmpeg_log_file.write('=======================\n')
 
     # Run the script
     buildFFmpeg(cwd, build_ffmpeg_log_file)
@@ -271,11 +287,31 @@ def main():
     for lib in sorted(copied_libs):
       build_ffmpeg_log_file.write('Copied ' + lib + '\n')
 
-    build_ffmpeg_log_file.close()
+    build_ffmpeg_log_file.write('\nArchiving third-party source\n')
+    build_ffmpeg_log_file.write('=======================\n')
+
+    # bundle up the third-party source
+    # grab each .tar.* from the packages folder
+    packages_zip_name = '-'.join(executables) + '-packages-' + getPlatformMachineVersion() + '.zip'
+    with ZipFile(os.path.join(os.path.dirname(output_dir), packages_zip_name), 'w') as myzip:
+        archives = pathlib.Path(packages_dir + '/').glob('*.tar.*')
+        for archive in sorted(archives, key=lambda s: str(s).lower()):
+            build_ffmpeg_log_file.write(os.path.join('packages', archive.name) + '\n')
+            myzip.write(str(archive.absolute()), archive.name)
+
+    build_ffmpeg_log_file.write('\nArchiving libraries\n')
+    build_ffmpeg_log_file.write('=======================\n')
 
     # bundle up the build artifacts
     os.chdir(output_dir)
-    subprocess.check_output(['/usr/bin/zip', '--symlinks', '-r', '../ffmpeg-ffprobe-shared-' + sys.platform + '-' + platform.machine() + '.' + readVersion() + '.zip', '.'])
+    shared_zip_name = '-'.join(executables) + '-shared-' + getPlatformMachineVersion() + '.zip'
+    args = ['/usr/bin/zip', '--symlinks', '-r', os.path.join('..', shared_zip_name), '.']
+    build_ffmpeg_log_file.write(' '.join(args))
+    subprocess.check_output(args)
+    
+    build_ffmpeg_log_file.write('\nEnd of build-ffmpeg-descript.py\n')
+    build_ffmpeg_log_file.write('=======================\n')
+    build_ffmpeg_log_file.close()
 
 #
 #   entry
