@@ -45,7 +45,8 @@ def buildFFmpeg(script_dir, log_file):
     env = os.environ
     env['SKIPINSTALL'] = 'yes'  # append 'SKIPINSTALL=yes' to skip prompt for installing FFmpeg to /usr/local/bin/etc
     env['VERBOSE'] = 'yes'
-    env['MACOSX_DEPLOYMENT_TARGET'] = '10.11'
+    if platform.machine() == 'x86_64':
+      env['MACOSX_DEPLOYMENT_TARGET'] = '10.11'
     
     # call main build script
     build_ffmpeg_path = os.path.join(script_dir, 'build-ffmpeg')
