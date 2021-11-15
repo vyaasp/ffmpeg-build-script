@@ -869,7 +869,7 @@ if build "libtheora" "1.1.1"; then
   chmod +x configure.patched
   mv configure.patched configure
   if $SHARED_LIBRARIES; then
-    if $MACOSX_M1; then
+    if $MACOS_M1; then
       # fix Libtool bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63610
       export MACOSX_DEPLOYMENT_TARGET=10.11
     fi
@@ -881,7 +881,7 @@ if build "libtheora" "1.1.1"; then
   execute make install
 
   if $SHARED_LIBRARIES; then
-    if $MACOSX_M1; then
+    if $MACOS_M1; then
       # restore from Line 26
       export MACOSX_DEPLOYMENT_TARGET=11.0
     fi

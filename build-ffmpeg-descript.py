@@ -29,6 +29,7 @@ packages_dir = os.path.join(cwd, 'packages')
 workspace_dir = os.path.join(cwd, 'workspace')
 workspace_bin_dir = os.path.join(workspace_dir, 'bin')
 workspace_lib_dir = os.path.join(workspace_dir, 'lib')
+deployment_target = '11.0' if platform.machine() == 'arm64' else '10.11' 
 
 #
 #   Keep track of which libraries are copied, skipped, or missing
@@ -45,8 +46,7 @@ def buildFFmpeg(script_dir, log_file):
     env = os.environ
     env['SKIPINSTALL'] = 'yes'  # append 'SKIPINSTALL=yes' to skip prompt for installing FFmpeg to /usr/local/bin/etc
     env['VERBOSE'] = 'yes'
-    if platform.machine() == 'x86_64':
-      env['MACOSX_DEPLOYMENT_TARGET'] = '10.11'
+    env['MACOSX_DEPLOYMENT_TARGET'] = deployment_target
     
     # call main build script
     build_ffmpeg_path = os.path.join(script_dir, 'build-ffmpeg')
@@ -101,11 +101,31 @@ def copyOrGenerateSymbolFiles(source, dest, log_file):
     for fileref in pathlib.Path(source + '/').glob('**/*.so*'):
       copyOrGenerateSymbolFile(str(fileref), dest, log_file)
 
+def readDeploymentTarget(src_file) -> str:
+    args = ['/usr/bin/otool', '-l', src_file]
+    otool_proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    inLoaderCommand = False
+    for line in otool_proc.stdout:
+        ln = line.decode('utf-8').strip()
+        if inLoaderCommand:
+            if ln.startswith('minos') or ln.startswith('version'):
+                return ln.split(' ')[1]
+            if ln.startswith('sdk'):
+                continue
+        elif 'LC_VERSION_MIN_MACOSX' in ln or 'LC_BUILD_VERSION' in ln:
+            inLoaderCommand = True
+
+    return ''
+           
+
 #
 #   Copies a library and its corresponding .dSYM bundle
 #   (if present)
 #
 def copyLibraryAndSymbolPackage(src_file, dest_folder, overwrite):
+    this_deployment_target = readDeploymentTarget(src_file)
+    assert this_deployment_target == deployment_target, '{0} wrong deployment target {1}'.format(src_file, this_deployment_target)
+
     dest_file = os.path.join(dest_folder, os.path.basename(src_file))
     
     # copy file
