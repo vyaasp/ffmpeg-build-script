@@ -291,9 +291,13 @@ def main():
         shutil.rmtree(output_dir)
     temp_dir = os.path.join(output_dir, platform.machine())
     os.makedirs(temp_dir)
+    symbol_temp_dir = os.path.join(output_dir, platform.machine() + '-symbols')
+
+    executables = ['ffmpeg', 'ffprobe']
+    base_artifact_name = '-'.join(executables) + '-shared-' + getPlatformMachineVersion()
 
     # create a log file for the build-ffmpeg command for build archival purposes
-    log_file_name = 'build-ffmpeg-' + getPlatformMachineVersion() + '.log.txt'
+    log_file_name = base_artifact_name + '-log.txt'
     log_file_path = os.path.join(output_dir, log_file_name)
     build_ffmpeg_log_file = open(log_file_path, 'w')
 
@@ -306,11 +310,13 @@ def main():
     # Generate dSYM files for each built library
     build_ffmpeg_log_file.write('\nGenerating Symbols\n')
     build_ffmpeg_log_file.write('=======================\n')
-    copyOrGenerateSymbolFiles(packages_dir, workspace_lib_dir, build_ffmpeg_log_file)
+    copyOrGenerateSymbolFiles(packages_dir, symbol_temp_dir, build_ffmpeg_log_file)
+    symbol_file_name = base_artifact_name + '-symbols'
+    shutil.make_archive(os.path.join(output_dir, symbol_file_name), 'zip', symbol_temp_dir)
+    shutil.rmtree(symbol_temp_dir)
 
     # Generate dSYM files for each executable
     # and copy their dependencies
-    executables = ['ffmpeg', 'ffprobe']
     for executable in executables:
         build_ffmpeg_log_file.write('\nCopying & Linking ' + executable + '\n')
         build_ffmpeg_log_file.write('=======================\n')
@@ -348,8 +354,7 @@ def main():
 
     # bundle up the third-party source
     # grab each .tar.* from the packages folder
-    shared_zip_name = '-'.join(executables) + '-shared-' + getPlatformMachineVersion() + '.zip'
-    packages_zip_name = f'{pathlib.Path(shared_zip_name).stem}-packages.zip'
+    packages_zip_name = base_artifact_name + '-packages.zip'
     with zipfile.ZipFile(os.path.join(output_dir, packages_zip_name), 'w', zipfile.ZIP_DEFLATED) as myzip:
         archives = pathlib.Path(packages_dir + '/').glob('*.tar.*')
         for archive in sorted(archives, key=lambda s: str(s).lower()):
@@ -361,6 +366,7 @@ def main():
 
     # bundle up the build artifacts
     os.chdir(temp_dir)
+    shared_zip_name = base_artifact_name + '.zip'
     dest_file = os.path.join(output_dir, shared_zip_name)
     args = ['/usr/bin/zip', '--symlinks', '-r', os.path.join('..', shared_zip_name), '.']
     build_ffmpeg_log_file.write(' '.join(args) + '\n')
