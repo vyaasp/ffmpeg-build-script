@@ -40,9 +40,12 @@ copied_libs = set()
 missing_libs = set()
 
 #
-#   builds FFmpeg and logs output to build-ffmpeg.log.txt
+#
 #
 def buildFFmpeg(script_dir, log_file):
+    """
+    builds FFmpeg and logs output to `log_file`
+    """
     # set environment variables
     env = os.environ
     env['SKIPINSTALL'] = 'yes'  # append 'SKIPINSTALL=yes' to skip prompt for installing FFmpeg to /usr/local/bin/etc
@@ -60,11 +63,14 @@ def buildFFmpeg(script_dir, log_file):
     subprocess.call(args, env=env, stdout=log_file)
 
 #
-#   Copies symbol file to the workspace destination
-#   skips symlinks to avoid duplication
-#   Copies entire dSYM packages for dylib files already within .dSYM packages
+#
 #
 def copyOrGenerateSymbolFile(file, dest, log_file):
+    """
+    Copies a single symbol file to the workspace destination
+    skips symlinks to avoid duplication
+    Copies entire `dSYM` packages for `dylib` files already within `.dSYM` packages
+    """
     fileref = pathlib.Path(file)
     if not fileref.is_symlink():
         symbolFileName = fileref.name + '.dSYM'
@@ -92,17 +98,27 @@ def copyOrGenerateSymbolFile(file, dest, log_file):
             subprocess.call(args, stdout=log_file)
 
 #
-#   Copies symbol files to the workspace destination
-#   skips symlinks to avoid duplication
-#   Copies entire dSYM packages for dylib files already within .dSYM packages
+#
 #
 def copyOrGenerateSymbolFiles(source, dest, log_file):
+    """
+    Recursively copies symbol files to the workspace destination
+    skips symlinks to avoid duplication
+    Copies entire `dSYM` packages for `dylib` files already within `.dSYM` packages
+    """
     for fileref in pathlib.Path(source + '/').glob('**/*.dylib'):
       copyOrGenerateSymbolFile(str(fileref), dest, log_file)
     for fileref in pathlib.Path(source + '/').glob('**/*.so*'):
       copyOrGenerateSymbolFile(str(fileref), dest, log_file)
 
+#
+#
+#
 def readDeploymentTarget(src_file) -> str:
+    """
+    Reads the deployment target of a binary
+    :return: something like `'10.11'` or an empty string
+    """
     args = ['/usr/bin/otool', '-l', src_file]
     otool_proc = subprocess.Popen(args, stdout=subprocess.PIPE)
     inLoaderCommand = False
@@ -120,10 +136,13 @@ def readDeploymentTarget(src_file) -> str:
            
 
 #
-#   Copies a library and its corresponding .dSYM bundle
-#   (if present)
+#
 #
 def copyLibraryAndSymbolPackage(src_file, dest_folder, overwrite):
+    """
+    Copies a library and its corresponding `.dSYM` bundle
+    (if present)
+    """
     this_deployment_target = readDeploymentTarget(src_file)
     assert this_deployment_target == deployment_target, '{0} wrong deployment target {1}'.format(src_file, this_deployment_target)
 
@@ -144,21 +163,26 @@ def copyLibraryAndSymbolPackage(src_file, dest_folder, overwrite):
           shutil.copytree(src_symbol_package, dest_symbol_package)
 
 #
-#   Helper function to get a base name of a library
-#   without version numbers
+#
 #
 def getFilenameWithoutVersion(file_name) -> str:
-  result = file_name.split('.')[0]
-  # libSDL2 weirdly has hypthen after then name (i.e., libSDL2-2.0.0.dylib)
-  if 'libSDL2' in result:
-    result = 'libSDL2'
-  return result
+    """
+    :return: `'libSDL2'` for something like `'libSDL2-2.0.0.dylib'`
+    """
+    result = file_name.split('.')[0]
+    # libSDL2 weirdly has hypthen after then name (i.e., libSDL2-2.0.0.dylib)
+    if 'libSDL2' in result:
+        result = 'libSDL2'
+    return result
 
 #
-# Recursive function to copy a library and its (non-system) dependencies
-# also fixes loader paths for each library
+#
 #
 def copyLibraryAndDependencies(src_file, dest_folder, log_file):
+    """
+    Recursive function to copy a library and its (non-system) dependencies
+    also fixes loader paths for each library to be `@loader_path`
+    """
 
     dest_file = os.path.join(dest_folder, os.path.basename(src_file))
 
@@ -233,9 +257,13 @@ def copyLibraryAndDependencies(src_file, dest_folder, log_file):
             subprocess.check_output(args)
 
 #
-#   Read the version string from ./build-ffmpeg
+#
 #
 def readVersion() -> str:
+    """
+    Reads the version string from ../build-ffmpeg
+    :return: something like `'1.31rc1'`
+    """
     result = ''
     with open(os.path.join(base_dir, 'build-ffmpeg')) as f:
         lines = f.readlines()
@@ -245,9 +273,12 @@ def readVersion() -> str:
     return result
 
 #
-#   Returns a string like darwin-x86_64.1.31rc2
+#
 #
 def getPlatformMachineVersion() -> str:
+    """
+    :return: a string like `'darwin-x86_64.1.31rc2'`
+    """
     return sys.platform + '-' + platform.machine() + '.' + readVersion()
 
 
@@ -257,8 +288,8 @@ def getPlatformMachineVersion() -> str:
 def generateChecksum(output_folder):
     """
     Calculates checksums for every file in `output_folder`
+    and puts it in a `SHAMSUM256.txt` file
     """
-
     checksums = set()
 
     # calculate checksums for all files
