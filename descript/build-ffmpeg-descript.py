@@ -6,7 +6,7 @@ the FFmpeg building process, for use in Descript's environment.
 
 (1) Call build-ffmpeg with the build command
 (2) Copy or generate dSYM symbol files to the workspace folder
-(3) Copy executables from the workspace folder and all built dependencies to platform outputfolder
+(3) Copy executables from the workspace folder and all built dependencies to platform output folder
 (4) Fix dyld ids and loader paths for all built libraries
 (5) Zip up the build artifacts
 '''
@@ -301,7 +301,7 @@ def main():
     build_ffmpeg_log_file.write('=======================\n')
 
     # Run the script
-    #buildFFmpeg(base_dir, build_ffmpeg_log_file)
+    buildFFmpeg(base_dir, build_ffmpeg_log_file)
     
     # Generate dSYM files for each built library
     build_ffmpeg_log_file.write('\nGenerating Symbols\n')
