@@ -25,8 +25,9 @@ from zipfile import ZipFile
 #   Constants
 #
 cwd = os.path.dirname(os.path.realpath(__file__))
-packages_dir = os.path.join(cwd, 'packages')
-workspace_dir = os.path.join(cwd, 'workspace')
+base_dir = pathlib.Path(cwd).parent.absolute()
+packages_dir = os.path.join(base_dir, 'packages')
+workspace_dir = os.path.join(base_dir, 'workspace')
 workspace_bin_dir = os.path.join(workspace_dir, 'bin')
 workspace_lib_dir = os.path.join(workspace_dir, 'lib')
 deployment_target = '11.0' if platform.machine() == 'arm64' else '10.11' 
@@ -236,7 +237,7 @@ def copyLibraryAndDependencies(src_file, dest_folder, log_file):
 #
 def readVersion() -> str:
     result = ''
-    with open(os.path.join(cwd, 'build-ffmpeg')) as f:
+    with open(os.path.join(base_dir, 'build-ffmpeg')) as f:
         lines = f.readlines()
         for line in lines:
             if line.startswith('SCRIPT_VERSION='):
@@ -253,7 +254,7 @@ def getPlatformMachineVersion() -> str:
 #
 #
 def main():
-    output_dir = os.path.join(workspace_dir, 'mac', platform.machine())
+    output_dir = os.path.join(cwd, 'mac', platform.machine())
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir)
@@ -267,7 +268,7 @@ def main():
     build_ffmpeg_log_file.write('=======================\n')
 
     # Run the script
-    buildFFmpeg(cwd, build_ffmpeg_log_file)
+    buildFFmpeg(base_dir, build_ffmpeg_log_file)
     
     # Generate dSYM files for each built library
     build_ffmpeg_log_file.write('\nGenerating Symbols\n')
