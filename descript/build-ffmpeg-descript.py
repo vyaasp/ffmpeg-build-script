@@ -19,7 +19,7 @@ import re
 import shutil
 import subprocess
 import sys
-from zipfile import ZipFile
+import zipfile
 
 #
 #   Constants
@@ -250,25 +250,58 @@ def readVersion() -> str:
 def getPlatformMachineVersion() -> str:
     return sys.platform + '-' + platform.machine() + '.' + readVersion()
 
+
+#
+#
+#
+def generateChecksum(output_folder):
+    """
+    Calculates checksums for every file in `output_folder`
+    """
+
+    checksums = set()
+
+    # calculate checksums for all files
+    for (dirpath, dirnames, filenames) in os.walk(output_folder):
+        for file in filenames:
+            args = ['shasum', '-a', '256', os.path.join(dirpath, file)]
+            output = subprocess.check_output(args)
+            checksum = output.decode('utf-8').strip()
+
+            # replace absolute path to just filename
+            # From: '0a88d3f97f356c6a42449fd548f9b586f565899144849019014e36c7683b745e  /Users/cvanwink/Source/git/electron/src/out/Testing/dist.zip'
+            # To:   '0a88d3f97f356c6a42449fd548f9b586f565899144849019014e36c7683b745e  *electron-v13.1.6-darwin-x64.zip'
+            checksum = checksum.replace(os.path.join(dirpath, ''), '*')
+            checksums.add(checksum)
+        break
+    
+    # Write Checksums to file
+    checksum_file_path = os.path.join(output_folder, 'SHAMSUM256.txt')
+    checksum_file = open(checksum_file_path, 'w')
+    for checksum in checksums:
+        checksum_file.write(f'{checksum}\n')
+    checksum_file.close()
+
 #
 #
 #
 def main():
-    output_dir = os.path.join(cwd, 'mac', platform.machine())
+    output_dir = os.path.join(cwd, 'mac')
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
-    os.makedirs(output_dir)
+    temp_dir = os.path.join(output_dir, platform.machine())
+    os.makedirs(temp_dir)
 
     # create a log file for the build-ffmpeg command for build archival purposes
     log_file_name = 'build-ffmpeg-' + getPlatformMachineVersion() + '.log.txt'
-    build_ffmpeg_log_file_path = os.path.join(os.path.dirname(output_dir), log_file_name)
-    build_ffmpeg_log_file = open(build_ffmpeg_log_file_path, 'w')
+    log_file_path = os.path.join(output_dir, log_file_name)
+    build_ffmpeg_log_file = open(log_file_path, 'w')
 
     build_ffmpeg_log_file.write('Begin build-ffmpeg-descript.py\n')
     build_ffmpeg_log_file.write('=======================\n')
 
     # Run the script
-    buildFFmpeg(base_dir, build_ffmpeg_log_file)
+    #buildFFmpeg(base_dir, build_ffmpeg_log_file)
     
     # Generate dSYM files for each built library
     build_ffmpeg_log_file.write('\nGenerating Symbols\n')
@@ -283,12 +316,12 @@ def main():
         build_ffmpeg_log_file.write('=======================\n')
         executable_path = os.path.join(workspace_bin_dir, executable)
         copyOrGenerateSymbolFile(executable_path, workspace_bin_dir, build_ffmpeg_log_file)
-        copyLibraryAndDependencies(executable_path, output_dir, build_ffmpeg_log_file)
+        copyLibraryAndDependencies(executable_path, temp_dir, build_ffmpeg_log_file)
 
         # check that the copied file is runnable
         build_ffmpeg_log_file.write('\nChecking ' + executable + '\n')
         build_ffmpeg_log_file.write('=======================\n')
-        args = [os.path.join(output_dir, executable), '-version']
+        args = [os.path.join(temp_dir, executable), '-version']
         build_ffmpeg_log_file.write(' '.join(args) + '\n')
         output = subprocess.check_output(args)
         build_ffmpeg_log_file.write(output.decode('utf-8'))
@@ -296,7 +329,7 @@ def main():
     # Copy Includes
     shutil.copytree(
       os.path.join(workspace_dir, 'include'),
-      os.path.join(output_dir, 'include'))
+      os.path.join(temp_dir, 'include'))
 
     build_ffmpeg_log_file.write('\nLibrary Info\n')
     build_ffmpeg_log_file.write('=======================\n')
@@ -315,8 +348,9 @@ def main():
 
     # bundle up the third-party source
     # grab each .tar.* from the packages folder
-    packages_zip_name = '-'.join(executables) + '-packages-' + getPlatformMachineVersion() + '.zip'
-    with ZipFile(os.path.join(os.path.dirname(output_dir), packages_zip_name), 'w') as myzip:
+    shared_zip_name = '-'.join(executables) + '-shared-' + getPlatformMachineVersion() + '.zip'
+    packages_zip_name = f'{pathlib.Path(shared_zip_name).stem}-packages.zip'
+    with zipfile.ZipFile(os.path.join(output_dir, packages_zip_name), 'w', zipfile.ZIP_DEFLATED) as myzip:
         archives = pathlib.Path(packages_dir + '/').glob('*.tar.*')
         for archive in sorted(archives, key=lambda s: str(s).lower()):
             build_ffmpeg_log_file.write(os.path.join('packages', archive.name) + '\n')
@@ -326,15 +360,24 @@ def main():
     build_ffmpeg_log_file.write('=======================\n')
 
     # bundle up the build artifacts
-    os.chdir(output_dir)
-    shared_zip_name = '-'.join(executables) + '-shared-' + getPlatformMachineVersion() + '.zip'
+    os.chdir(temp_dir)
+    dest_file = os.path.join(output_dir, shared_zip_name)
     args = ['/usr/bin/zip', '--symlinks', '-r', os.path.join('..', shared_zip_name), '.']
     build_ffmpeg_log_file.write(' '.join(args) + '\n')
     subprocess.check_output(args)
+
+    shutil.rmtree(temp_dir)
     
     build_ffmpeg_log_file.write('\nEnd of build-ffmpeg-descript.py\n')
     build_ffmpeg_log_file.write('=======================\n')
     build_ffmpeg_log_file.close()
+
+    # zip up log file
+    with zipfile.ZipFile(os.path.splitext(log_file_path)[0] + '.zip', 'w', zipfile.ZIP_DEFLATED) as myzip:
+        myzip.write(log_file_path, os.path.basename(log_file_path))
+    os.remove(log_file_path)
+
+    generateChecksum(output_dir)
 
 #
 #   entry
