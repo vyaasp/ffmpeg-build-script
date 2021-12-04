@@ -165,15 +165,42 @@ def copyLibraryAndSymbolPackage(src_file, dest_folder, overwrite):
 #
 #
 #
-def getFilenameWithoutVersion(file_name) -> str:
+def getFileBaseNameWithoutVersion(file_path) -> str:
     """
-    :return: `'libSDL2'` for something like `'libSDL2-2.0.0.dylib'`
+    :return: `'libpostproc'` for something like `'/foo/bar/libpostproc.55.9.100.dylib'`
     """
-    result = file_name.split('.')[0]
+    base_name = os.path.basename(file_path)
+    base_name = base_name.split('.')[0] # keep everything before first '.'
     # libSDL2 weirdly has hypthen after then name (i.e., libSDL2-2.0.0.dylib)
-    if 'libSDL2' in result:
-        result = 'libSDL2'
-    return result
+    if base_name.startswith('libSDL2'):
+        base_name = 'libSDL2'
+    return base_name
+
+#
+#
+#
+def getVersionVariantsForFile(file_path) -> list[str]:
+    """
+    Returns the following three files for any one of the file paths provided:
+    `'.../ffmpeg-build-script/workspace/lib/libavcodec.58.134.100.dylib'`
+    `'.../ffmpeg-build-script/workspace/lib/libavcodec.58.dylib'`
+    `'.../ffmpeg-build-script/workspace/lib/libavcodec.dylib'`
+
+    """
+    result = set()
+    result.add(file_path)
+    if (pathlib.Path(file_path).is_symlink()):
+        result.add(os.path.realpath(file_path))
+
+    dependency_name_without_version = getFileBaseNameWithoutVersion(file_path)
+    unversioned_dependency_base_name = os.path.join(
+        os.path.dirname(file_path),
+        dependency_name_without_version)
+
+    for variant in glob.glob(unversioned_dependency_base_name + r'.*dylib'):
+        result.add(variant)
+        
+    return list(result)
 
 #
 #
@@ -206,8 +233,9 @@ def copyLibraryAndDependencies(src_file, dest_folder, log_file):
         src_dependency_file = match[0]
 
         # fix incorrect usage of @rpath
-        if src_dependency_file.startswith('@rpath/'):
-            fixed_path = os.path.join(workspace_lib_dir, src_dependency_file[7:])
+        rpath_token = '@rpath/'
+        if src_dependency_file.startswith(rpath_token):
+            fixed_path = os.path.join(workspace_lib_dir, src_dependency_file[len(rpath_token):])
             loader_paths_to_rewrite.append({'old_path': src_dependency_file, 'new_path': fixed_path})
             src_dependency_file = fixed_path
 
@@ -224,17 +252,14 @@ def copyLibraryAndDependencies(src_file, dest_folder, log_file):
             if not src_dependency_file in copied_libs:
                 if src_dependency_file != dest_dependency_path:
                     # Copy each version variant file (often symlinks)
-                    dependency_name_without_version = getFilenameWithoutVersion(src_dependency_file)
-                    unversioned_dependency_base_name = os.path.join(os.path.dirname(src_dependency_file), dependency_name_without_version)
-                    for variant_src_file in glob.glob(unversioned_dependency_base_name + r'*.dylib'):
+                    for variant_src_file in getVersionVariantsForFile(src_dependency_file):
                         copyLibraryAndSymbolPackage(variant_src_file, dest_folder, False)
                         variant_dest_file = os.path.join(dest_folder, os.path.basename(variant_src_file))
                         copied_libs.add(variant_src_file)
                         copied_libs.add(variant_dest_file)
 
                     # RECURSIVELY copy dependencies
-                    if (os.path.exists(unversioned_dependency_base_name + '.dylib')):
-                        copyLibraryAndDependencies(unversioned_dependency_base_name + '.dylib', dest_folder, log_file)
+                    copyLibraryAndDependencies(os.path.relpath(src_dependency_file), dest_folder, log_file)
             
             loader_paths_to_rewrite.append({'old_path': src_dependency_file, 'new_path': dest_dependency_path})
         else:
@@ -342,9 +367,6 @@ def main():
     build_ffmpeg_log_file.write('\nGenerating Symbols\n')
     build_ffmpeg_log_file.write('=======================\n')
     copyOrGenerateSymbolFiles(packages_dir, symbol_temp_dir, build_ffmpeg_log_file)
-    symbol_file_name = base_artifact_name + '-symbols'
-    shutil.make_archive(os.path.join(output_dir, symbol_file_name), 'zip', symbol_temp_dir)
-    shutil.rmtree(symbol_temp_dir)
 
     # Generate dSYM files for each executable
     # and copy their dependencies
@@ -352,7 +374,7 @@ def main():
         build_ffmpeg_log_file.write('\nCopying & Linking ' + executable + '\n')
         build_ffmpeg_log_file.write('=======================\n')
         executable_path = os.path.join(workspace_bin_dir, executable)
-        copyOrGenerateSymbolFile(executable_path, workspace_bin_dir, build_ffmpeg_log_file)
+        copyOrGenerateSymbolFile(executable_path, symbol_temp_dir, build_ffmpeg_log_file)
         copyLibraryAndDependencies(executable_path, temp_dir, build_ffmpeg_log_file)
 
         # check that the copied file is runnable
@@ -362,6 +384,10 @@ def main():
         build_ffmpeg_log_file.write(' '.join(args) + '\n')
         output = subprocess.check_output(args)
         build_ffmpeg_log_file.write(output.decode('utf-8'))
+
+    symbol_file_name = base_artifact_name + '-symbols'
+    shutil.make_archive(os.path.join(output_dir, symbol_file_name), 'zip', symbol_temp_dir)
+    shutil.rmtree(symbol_temp_dir)
 
     # Copy Includes
     shutil.copytree(
