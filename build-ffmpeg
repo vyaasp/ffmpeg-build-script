@@ -1076,7 +1076,6 @@ if $SHARED_LIBRARIES; then
   --disable-static \
   --enable-pthreads \
   --enable-shared\
-  --enable-small \
   --enable-version3 \
   --extra-cflags="${CFLAGS}" \
   --extra-ldexeflags="${LDEXEFLAGS}" \
