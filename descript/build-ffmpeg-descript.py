@@ -59,8 +59,9 @@ def buildFFmpeg(script_dir, log_file):
         '-b',                       # build
         '--full-shared',            # custom Descript shim to build shared libraries instead of static
         '--enable-gpl-and-free']    # custom Descript shim to build GPL but not non-free (libpostproc is needed by Beamcoder and requires GPL)
-    log_file.write(' '.join(args) + '\n\n')    
-    subprocess.call(args, env=env, stdout=log_file)
+    log_file.write(' '.join(args) + '\n\n')
+    log_file.flush()
+    subprocess.run(args, env=env, stdout=log_file, stderr=log_file, check=True)
 
 #
 #
