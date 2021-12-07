@@ -344,7 +344,10 @@ if build "giflib" "5.2.1"; then
       download "https://sourceforge.net/p/giflib/bugs/_discuss/thread/4e811ad29b/c323/attachment/Makefile.patch"
       execute patch "${PACKAGES}/giflib-5.2.1/Makefile" ${PACKAGES}/Makefile.patch""
     fi
-  execute make -j $MJOBS
+  # Descript: compilation will fail with more than 8 jobs, so
+  # force to not run in parallel
+  #execute make -j $MJOBS
+  execute make
   execute make PREFIX="${WORKSPACE}" install
   build_done "giflib" "5.2.1"
 fi
