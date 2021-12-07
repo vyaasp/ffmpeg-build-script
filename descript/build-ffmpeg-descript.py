@@ -180,7 +180,7 @@ def getFileBaseNameWithoutVersion(file_path) -> str:
 #
 #
 #
-def getVersionVariantsForFile(file_path) -> list[str]:
+def getVersionVariantsForFile(file_path):
     """
     Returns the following three files for any one of the file paths provided:
     `'.../ffmpeg-build-script/workspace/lib/libavcodec.58.134.100.dylib'`
@@ -206,10 +206,11 @@ def getVersionVariantsForFile(file_path) -> list[str]:
 #
 #
 #
-def copyLibraryAndDependencies(src_file, dest_folder, log_file):
+def copyLibraryAndDependencies(src_file, dest_folder, log_file, parent_path = ''):
     """
     Recursive function to copy a library and its (non-system) dependencies
     also fixes loader paths for each library to be `@loader_path`
+    :param: `parent_path` - optional argument to show which parent is linking against `src_file`
     """
 
     dest_file = os.path.join(dest_folder, os.path.basename(src_file))
@@ -243,7 +244,7 @@ def copyLibraryAndDependencies(src_file, dest_folder, log_file):
         if src_dependency_file.startswith('/usr/local'):
             # the build grabbed libraries installed on this machine
             # which might not be available on other machines
-            missing_libs.add(src_dependency_file)
+            missing_libs.add(f'{src_dependency_file} (dependency of {os.path.basename(parent_path)})')
         elif src_dependency_file.startswith(workspace_dir):
             dependency_name = os.path.basename(src_dependency_file)
             if not len(this_id):
@@ -260,7 +261,11 @@ def copyLibraryAndDependencies(src_file, dest_folder, log_file):
                         copied_libs.add(variant_dest_file)
 
                     # RECURSIVELY copy dependencies
-                    copyLibraryAndDependencies(os.path.realpath(src_dependency_file), dest_folder, log_file)
+                    copyLibraryAndDependencies(
+                        os.path.realpath(src_dependency_file),
+                        dest_folder,
+                        log_file,
+                        src_file)
             
             loader_paths_to_rewrite.append({'old_path': src_dependency_file, 'new_path': dest_dependency_path})
         else:
@@ -376,7 +381,7 @@ def main():
         build_ffmpeg_log_file.write('=======================\n')
         executable_path = os.path.join(workspace_bin_dir, executable)
         copyOrGenerateSymbolFile(executable_path, symbol_temp_dir, build_ffmpeg_log_file)
-        copyLibraryAndDependencies(executable_path, temp_dir, build_ffmpeg_log_file)
+        copyLibraryAndDependencies(executable_path, temp_dir, build_ffmpeg_log_file, executable_path)
 
         # check that the copied file is runnable
         build_ffmpeg_log_file.write('\nChecking ' + executable + '\n')
