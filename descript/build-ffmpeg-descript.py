@@ -260,7 +260,7 @@ def copyLibraryAndDependencies(src_file, dest_folder, log_file):
                         copied_libs.add(variant_dest_file)
 
                     # RECURSIVELY copy dependencies
-                    copyLibraryAndDependencies(os.path.relpath(src_dependency_file), dest_folder, log_file)
+                    copyLibraryAndDependencies(os.path.realpath(src_dependency_file), dest_folder, log_file)
             
             loader_paths_to_rewrite.append({'old_path': src_dependency_file, 'new_path': dest_dependency_path})
         else:
