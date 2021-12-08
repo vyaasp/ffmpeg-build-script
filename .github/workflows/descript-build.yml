@@ -15,8 +15,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: build-ffmpeg-descript.py
+      - name: setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8 #install the python needed
+      
+      - name: execute py script # run the run.py to get the latest data
         run: |
-          while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
-          output=$(python3 ./descript/build-ffmpeg-descript.py)
-          kill %1
+          python ./descript/build-ffmpeg-descript.py
