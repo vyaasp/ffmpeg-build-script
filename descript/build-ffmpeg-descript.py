@@ -57,6 +57,16 @@ def log(str):
 #
 #
 #
+def log_pipe(pipe):
+    """
+    logs from a pipe by claling log()
+    """
+    for line in iter(pipe.readline, b''): # b'\n'-separated lines
+        log(line.decode('utf-8').strip())
+
+#
+#
+#
 def buildFFmpeg(script_dir, log_file):
     """
     builds FFmpeg and logs output to `log_file`
@@ -75,8 +85,13 @@ def buildFFmpeg(script_dir, log_file):
         '--full-shared',            # custom Descript shim to build shared libraries instead of static
         '--enable-gpl-and-free']    # custom Descript shim to build GPL but not non-free (libpostproc is needed by Beamcoder and requires GPL)
     log(' '.join(args) + '\n')
-    process_result = subprocess.run(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-    log(process_result.stdout.decode('utf-8'))
+    log_file.flush()
+    shell_proc = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    with shell_proc.stdout:
+        log_pipe(shell_proc.stdout)
+    exitcode = shell_proc.wait() # 0 means success
+    if (exitcode != 0):
+        raise exitcode
 
 #
 #
