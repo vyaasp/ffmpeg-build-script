@@ -49,10 +49,10 @@ log_file = None
 #
 def log(str):
     """
-    Logs to stderr and to log_file
+    Logs to stdout and to log_file
     """
     log_file.write(str + '\n')
-    print(str, file=sys.stderr)
+    print(str, flush=True)
 
 #
 #
