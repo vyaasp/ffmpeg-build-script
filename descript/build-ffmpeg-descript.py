@@ -447,13 +447,15 @@ def main():
     log('=======================')
 
     # bundle up the third-party source
-    # grab each .tar.* from the packages folder
+    # grab each .tar.* and any downloaded patches from the packages folder
     packages_zip_name = base_artifact_name + '-packages.zip'
     with zipfile.ZipFile(os.path.join(output_dir, packages_zip_name), 'w', zipfile.ZIP_DEFLATED) as myzip:
-        archives = pathlib.Path(packages_dir + '/').glob('*.tar.*')
-        for archive in sorted(archives, key=lambda s: str(s).lower()):
-            log(os.path.join('packages', archive.name))
-            myzip.write(str(archive.absolute()), archive.name)
+        types = ['*.tar.*', '*.patch', '*.diff']
+        for file_type in types:
+            archives = pathlib.Path(packages_dir + '/').glob(file_type)
+            for archive in sorted(archives, key=lambda s: str(s).lower()):
+                log(os.path.join('packages', archive.name))
+                myzip.write(str(archive.absolute()), archive.name)
 
     log('\nArchiving libraries')
     log('=======================')
