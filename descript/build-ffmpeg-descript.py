@@ -398,7 +398,7 @@ def main():
     log('=======================')
 
     # Run the script
-    #buildFFmpeg(base_dir, log_file)
+    buildFFmpeg(base_dir, log_file)
     
     # Generate dSYM files for each built library
     log('\nGenerating Symbols')
