@@ -40,6 +40,21 @@ copied_libs = set()
 missing_libs = set()
 
 #
+#   Global Logging File
+#
+log_file = None
+
+#
+#
+#
+def log(str):
+    """
+    Logs to stdout and to log_file
+    """
+    log_file.write(str + '\n')
+    print(str)
+
+#
 #
 #
 def buildFFmpeg(script_dir, log_file):
@@ -59,9 +74,9 @@ def buildFFmpeg(script_dir, log_file):
         '-b',                       # build
         '--full-shared',            # custom Descript shim to build shared libraries instead of static
         '--enable-gpl-and-free']    # custom Descript shim to build GPL but not non-free (libpostproc is needed by Beamcoder and requires GPL)
-    log_file.write(' '.join(args) + '\n\n')
-    log_file.flush()
-    subprocess.run(args, env=env, stdout=log_file, stderr=log_file, check=True)
+    log(' '.join(args) + '\n')
+    process_result = subprocess.run(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+    log(process_result.stdout.decode('utf-8'))
 
 #
 #
@@ -95,8 +110,9 @@ def copyOrGenerateSymbolFile(file, dest, log_file):
         #   ./packages/libtheora-1.1.1/lib/.libs/libtheora.dylib
         except ValueError as e:
             args = ['/usr/bin/dsymutil', str(fileref), '-o', destPath]
-            log_file.write(' '.join(args) + '\n')
-            subprocess.call(args, stdout=log_file)
+            log(' '.join(args) + '\n')
+            process_result = subprocess.run(args, stdout=subprocess.PIPE)
+            log(process_result.stdout.decode('utf-8'))
 
 #
 #
@@ -277,14 +293,14 @@ def copyLibraryAndDependencies(src_file, dest_folder, log_file, parent_path = ''
     # correct the loader path for this library
     if len(this_id):
         args = ['/usr/bin/install_name_tool', '-id', '@loader_path/' + this_id, actual_binary_path]
-        log_file.write(' '.join(args) + '\n')
+        log(' '.join(args))
         subprocess.check_output(args)
     
     # correct the loader paths for all dependencies
     if len(loader_paths_to_rewrite) > 0:
         for loader_path in loader_paths_to_rewrite:
             args = ['/usr/bin/install_name_tool', '-change', loader_path['old_path'], '@loader_path/' + os.path.basename(loader_path['new_path']), actual_binary_path]
-            log_file.write(' '.join(args) + '\n')
+            log(' '.join(args))
             subprocess.check_output(args)
 
 #
@@ -361,35 +377,35 @@ def main():
     # create a log file for the build-ffmpeg command for build archival purposes
     log_file_name = base_artifact_name + '-log.txt'
     log_file_path = os.path.join(output_dir, log_file_name)
-    build_ffmpeg_log_file = open(log_file_path, 'w')
+    globals()['log_file'] = open(log_file_path, 'w')
 
-    build_ffmpeg_log_file.write('Begin build-ffmpeg-descript.py\n')
-    build_ffmpeg_log_file.write('=======================\n')
+    log('Begin build-ffmpeg-descript.py')
+    log('=======================')
 
     # Run the script
-    buildFFmpeg(base_dir, build_ffmpeg_log_file)
+    buildFFmpeg(base_dir, log_file)
     
     # Generate dSYM files for each built library
-    build_ffmpeg_log_file.write('\nGenerating Symbols\n')
-    build_ffmpeg_log_file.write('=======================\n')
-    copyOrGenerateSymbolFiles(packages_dir, symbol_temp_dir, build_ffmpeg_log_file)
+    log('\nGenerating Symbols')
+    log('=======================')
+    copyOrGenerateSymbolFiles(packages_dir, symbol_temp_dir, log_file)
 
     # Generate dSYM files for each executable
     # and copy their dependencies
     for executable in executables:
-        build_ffmpeg_log_file.write('\nCopying & Linking ' + executable + '\n')
-        build_ffmpeg_log_file.write('=======================\n')
+        log('\nCopying & Linking ' + executable)
+        log('=======================')
         executable_path = os.path.join(workspace_bin_dir, executable)
-        copyOrGenerateSymbolFile(executable_path, symbol_temp_dir, build_ffmpeg_log_file)
-        copyLibraryAndDependencies(executable_path, temp_dir, build_ffmpeg_log_file, executable_path)
+        copyOrGenerateSymbolFile(executable_path, symbol_temp_dir, log_file)
+        copyLibraryAndDependencies(executable_path, temp_dir, log_file, executable_path)
 
         # check that the copied file is runnable
-        build_ffmpeg_log_file.write('\nChecking ' + executable + '\n')
-        build_ffmpeg_log_file.write('=======================\n')
+        log('\nChecking ' + executable)
+        log('=======================')
         args = [os.path.join(temp_dir, executable), '-version']
-        build_ffmpeg_log_file.write(' '.join(args) + '\n')
+        log(' '.join(args))
         output = subprocess.check_output(args)
-        build_ffmpeg_log_file.write(output.decode('utf-8'))
+        log(output.decode('utf-8'))
 
     symbol_file_name = base_artifact_name + '-symbols'
     shutil.make_archive(os.path.join(output_dir, symbol_file_name), 'zip', symbol_temp_dir)
@@ -400,20 +416,20 @@ def main():
       os.path.join(workspace_dir, 'include'),
       os.path.join(temp_dir, 'include'))
 
-    build_ffmpeg_log_file.write('\nLibrary Info\n')
-    build_ffmpeg_log_file.write('=======================\n')
+    log('\nLibrary Info')
+    log('=======================')
 
     for lib in sorted(missing_libs):
-      build_ffmpeg_log_file.write('[WARNING] missing ' + lib + '\n')
+      log('[WARNING] missing ' + lib)
 
     for lib in sorted(skipped_libs):
-      build_ffmpeg_log_file.write('[NOTE] skipped ' + lib + '\n')
+      log('[NOTE] skipped ' + lib)
 
     for lib in sorted(copied_libs):
-      build_ffmpeg_log_file.write('Copied ' + lib + '\n')
+      log('Copied ' + lib)
 
-    build_ffmpeg_log_file.write('\nArchiving third-party source\n')
-    build_ffmpeg_log_file.write('=======================\n')
+    log('\nArchiving third-party source')
+    log('=======================')
 
     # bundle up the third-party source
     # grab each .tar.* from the packages folder
@@ -421,25 +437,25 @@ def main():
     with zipfile.ZipFile(os.path.join(output_dir, packages_zip_name), 'w', zipfile.ZIP_DEFLATED) as myzip:
         archives = pathlib.Path(packages_dir + '/').glob('*.tar.*')
         for archive in sorted(archives, key=lambda s: str(s).lower()):
-            build_ffmpeg_log_file.write(os.path.join('packages', archive.name) + '\n')
+            log(os.path.join('packages', archive.name))
             myzip.write(str(archive.absolute()), archive.name)
 
-    build_ffmpeg_log_file.write('\nArchiving libraries\n')
-    build_ffmpeg_log_file.write('=======================\n')
+    log('\nArchiving libraries')
+    log('=======================')
 
     # bundle up the build artifacts
     os.chdir(temp_dir)
     shared_zip_name = base_artifact_name + '.zip'
     dest_file = os.path.join(output_dir, shared_zip_name)
     args = ['/usr/bin/zip', '--symlinks', '-r', os.path.join('..', shared_zip_name), '.']
-    build_ffmpeg_log_file.write(' '.join(args) + '\n')
+    log(' '.join(args))
     subprocess.check_output(args)
 
     shutil.rmtree(temp_dir)
     
-    build_ffmpeg_log_file.write('\nEnd of build-ffmpeg-descript.py\n')
-    build_ffmpeg_log_file.write('=======================\n')
-    build_ffmpeg_log_file.close()
+    log('\nEnd of build-ffmpeg-descript.py')
+    log('=======================')
+    log_file.close()
 
     # zip up log file
     with zipfile.ZipFile(os.path.splitext(log_file_path)[0] + '.zip', 'w', zipfile.ZIP_DEFLATED) as myzip:

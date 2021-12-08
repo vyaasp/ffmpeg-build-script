@@ -1,0 +1,22 @@
+name: descript build test
+
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+  pull_request:
+    branches: [ charles/arm64 ]
+
+jobs:
+  build-macos-shared:
+    name: build in native macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: build-ffmpeg-descript.py
+        run: |
+          while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
+          python3 ./descript/build-ffmpeg-descript.py
+          kill %1
