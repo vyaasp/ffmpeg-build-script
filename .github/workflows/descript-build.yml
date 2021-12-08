@@ -18,5 +18,5 @@ jobs:
       - name: build-ffmpeg-descript.py
         run: |
           while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
-          python3 ./descript/build-ffmpeg-descript.py
+          output=$(python3 ./descript/build-ffmpeg-descript.py)
           kill %1
