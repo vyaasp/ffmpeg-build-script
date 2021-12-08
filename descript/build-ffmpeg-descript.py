@@ -49,17 +49,17 @@ log_file = None
 #
 def log(str):
     """
-    Logs to stdout and to log_file
+    Logs to stderr and to log_file
     """
     log_file.write(str + '\n')
-    print(str)
+    print(str, file=sys.stderr)
 
 #
 #
 #
 def log_pipe(pipe):
     """
-    logs from a pipe by claling log()
+    logs from a pipe by calling log()
     """
     for line in iter(pipe.readline, b''): # b'\n'-separated lines
         log(line.decode('utf-8').strip())
@@ -398,7 +398,7 @@ def main():
     log('=======================')
 
     # Run the script
-    buildFFmpeg(base_dir, log_file)
+    #buildFFmpeg(base_dir, log_file)
     
     # Generate dSYM files for each built library
     log('\nGenerating Symbols')
