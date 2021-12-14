@@ -15,7 +15,7 @@ LDEXEFLAGS=""
 EXTRALIBS="-ldl -lpthread -lm -lz"
 MACOS_M1=false
 CONFIGURE_OPTIONS=()
-NONFREE_AND_GPL=false
+NONFREE_AND_GPL=true
 LATEST=false
 
 # Check for Apple Silicon
@@ -379,19 +379,6 @@ if build "m4" "1.4.19"; then
   execute make -j $MJOBS
   execute make install
   build_done "m4" "1.4.19"
-fi
-
-if build "meson" "0.0.0"; then
-  execute pip3 install install meson ninja
-  build_done "meson" "0.0.0"
-fi
-
-if build "cmake" "3.18.4"; then
-  download "https://cmake.org/files/v3.18/cmake-3.18.4.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --system-zlib
-  execute make -j $MJOBS
-  execute make install
-  build_done "cmake" "3.18.4"
 fi
 
 if build "autoconf" "2.71"; then
