@@ -894,7 +894,7 @@ if build "snappy" "1.1.8"; then
   download "https://github.com/google/snappy/archive/1.1.8.tar.gz"
   make_dir build
   cd build || exit
-  execute cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DBUILD_SHARED_LIBS:bool=OFF
+  execute cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DBUILD_SHARED_LIBS:bool=OFF -DSNAPPY_BUILD_TESTS:bool=OFF -DSNAPPY_BUILD_BENCHMARKS:bool=OFF
   execute make -j $MJOBS
 
   set_mac_install_name "libsnappy.1.1.8.dylib" "libsnappy.1.dylib"
